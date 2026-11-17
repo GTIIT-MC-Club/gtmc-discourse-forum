@@ -284,8 +284,19 @@ HOME$ getent hosts mirrors.bfsu.edu.cn     # 有输出才算好
 ```
 
 部署顺序：装 Docker（用 `get.docker.com` 的官方脚本，得到 docker-ce）→ 配上面的镜像源
-→ 克隆 `discourse_docker` 到 `/var/discourse` → 把 `app.internal.yml` 装成
-`/var/discourse/containers/app.yml` → `sudo ./launcher rebuild app`。
+→ 克隆 `discourse_docker` 到 `/var/discourse` → 克隆本仓库 → 跑一键部署脚本：
+
+```
+HOME$ git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git ~/gtmc-discourse
+HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
+        ~/gtmc-discourse/infra/deploy-discourse.sh
+```
+
+这个脚本做三件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
+（内容没变就不重建容器，重建有停机）→ 按 `infra/content/admin-setup.md` 的顺序
+在容器里跑完五个配置脚本。可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
+否则 `force_https` 打开后全站 301 到 https:// 而那个端口没有 TLS。
+域名和 Caddy 就绪后去掉 `GTMC_APP_TEMPLATE` 与 `GTMC_FORCE_HTTPS` 再跑一次即可。
 
 **踩过的坑：不要引 `templates/web.china.template.yml`。** 它的 `before_code` 把容器里所有
 `https://github.com/` 改写成 `https://mirror.ghproxy.com/https://github.com/`，而这个代理站从
