@@ -16,7 +16,7 @@
 
 THEME_NAME = "GTMC"
 
-# 顺序即侧边栏和版块列表里的顺序。图标来自 theme/icons/，见 theme/README.md「图标」。
+# 顺序即侧边栏和版块列表里的顺序。图标来自 theme/assets/gtmc-icons.svg，见 theme/README.md「图标」。
 CATEGORY_ICONS = [
   %w[公告 gtmc-sign],
   %w[活动 gtmc-cake],

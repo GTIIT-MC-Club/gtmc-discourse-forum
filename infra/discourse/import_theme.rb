@@ -21,8 +21,8 @@ THEME_NAME = "GTMC"
 LIGHT_COLOR_SCHEME_NAME = "GTMC Light"
 DARK_COLOR_SCHEME_NAME = "GTMC Dark"
 
-# 只给仓库读者看、不属于主题本身的内容：字体的许可和字符表、图标的源文件和生成脚本（产物 assets/gtmc-icons.svg 要打进去）、说明文档
-THEME_DIRECTORY_ENTRIES_NOT_PACKED = %w[fonts icons README.md]
+# 只给仓库读者看、不属于主题本身的内容：字体的许可和字符表、说明文档
+THEME_DIRECTORY_ENTRIES_NOT_PACKED = %w[fonts README.md]
 # 压缩包文件名只用于核心判断格式，必须以 .zip 结尾
 THEME_ARCHIVE_FILENAME = "gtmc-theme.zip"
 
