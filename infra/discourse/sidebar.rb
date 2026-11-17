@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # 侧边栏与版块外观初始化，可重复执行：版块顺序和图标、全站默认侧边栏版块、「社区」区的链接、
 # 删除核心自带的 General 和 Site Feedback 版块、把页脚的站内链接写进 GTMC 主题的设置。
 #
