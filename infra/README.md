@@ -298,6 +298,17 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
 否则 `force_https` 打开后全站 301 到 https:// 而那个端口没有 TLS。
 域名和 Caddy 就绪后去掉 `GTMC_APP_TEMPLATE` 与 `GTMC_FORCE_HTTPS` 再跑一次即可。
 
+**内网阶段的第一个管理员**：邮件是关着的，网页注册的账号收不到激活信、登不进去，
+所以第一个管理员在容器里直接建（建出来就是已激活的），之后用它在后台给别人改权限：
+
+```
+HOME$ cd /var/discourse && sudo ./launcher enter app
+app# rake admin:create        # 按提示填邮箱、密码，问是否设为管理员时答 Y
+```
+
+论坛的数据（帖子、用户、站点设置、主题）在这台机器自己的数据库里，**和本地开发站不互通**。
+本地开发时在后台点出来的东西不会跟过来；能跟过来的只有写进本仓库脚本的那部分。
+
 **踩过的坑：不要引 `templates/web.china.template.yml`。** 它的 `before_code` 把容器里所有
 `https://github.com/` 改写成 `https://mirror.ghproxy.com/https://github.com/`，而这个代理站从
 这台机器连不上（`curl` 6 秒超时），`git fetch` 于是无限重试，`./launcher rebuild` 永远停在

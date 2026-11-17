@@ -36,7 +36,8 @@ env:
   # 域名没买，先用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
   # 不必每人改 hosts。以后换成正式域名只需改这一行再 rebuild。
   DISCOURSE_HOSTNAME: 192.168.2.111
-  DISCOURSE_DEVELOPER_EMAILS: "CHANGEME@gtiit.edu.cn"
+  # 不设 DISCOURSE_DEVELOPER_EMAILS：邮件关着，用那个邮箱注册也收不到激活信，成不了管理员。
+  # 首个管理员在容器里用 rake admin:create 建，见 infra/README.md。
 
   # 还没有 SMTP 服务。开着邮件会让注册卡在"等确认信"，所以先整个关掉。
   # PLAN 第 0 节说注册只允许 @gtiit.edu.cn 邮箱，那要等邮件服务到位后连同 SMTP 配置一起开。
@@ -49,3 +50,15 @@ volumes:
   - volume:
       host: /var/discourse/shared/standalone/log/var-log
       guest: /var/log
+
+# 和 app.yml 的同名钩子一致：不装这两个插件，论坛就没有 GTMC 的功能（右栏、服务器状态等）和后台升级页。
+hooks:
+  after_code:
+    - exec:
+        cd: $home/plugins
+        cmd:
+          - git clone https://github.com/discourse/docker_manager.git
+          - rm -rf /tmp/gtmc-discourse ./discourse-gtmc
+          - git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git /tmp/gtmc-discourse
+          - cp -r /tmp/gtmc-discourse/plugins/discourse-gtmc ./discourse-gtmc
+          - rm -rf /tmp/gtmc-discourse
