@@ -110,6 +110,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 - **服务器接口**（`/gtmc/server/*`）：MC 插件和 bridge 调用，用 Discourse 原生 API Key
   （请求头 `Api-Key` + `Api-Username: system`）。插件用 `add_api_key_scope` 注册一个 `gtmc:server` 作用域，
   发给 MC 插件的 Key 只勾这个作用域。
+  请求体一律 JSON（`Content-Type: application/json`），数值字段必须是 JSON 数字而不是字符串，否则 400。
 
 服务器接口的业务结论一律用 **HTTP 200 + `status` 枚举**表达，4xx/5xx 只表示请求本身有问题。
 这样调用方能把「论坛说不行」和「论坛挂了」分开处理。
@@ -242,7 +243,8 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 建 `plugins/discourse-gtmc/`：`plugin.rb`、站点设置、中英文 locale、路由、rspec 配置。
 - 实现 4.1 里标「一」的两个接口和 `gtmc:server` API Key 作用域。
 - 在 `app.yml` 的 `after_code` 钩子里把本插件装进容器（克隆本仓库后复制 `plugins/discourse-gtmc`），重建验证。
-- **验收**：rspec 覆盖：心跳后状态在线、超时后离线、无 Key 或作用域不对被拒、`gtmc_enabled` 关闭时接口 404。
+- **验收**：rspec 覆盖：心跳后状态在线、超时后离线、无 Key 或作用域不对被拒、`gtmc_enabled` 关闭时 `status.json` 404。
+  （关闭插件时 Discourse 会连带停用 `gtmc:server` 作用域，只勾了它的 Key 访问服务器接口得到 403 而非 404，这是预期行为。）
 
 ### M1 MC 插件骨架 + 心跳
 
