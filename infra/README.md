@@ -513,9 +513,10 @@ HOME$ sudo journalctl -u docker -n 50 --no-pager
 ```
 
 容器里没有 `http_proxy` 就说明 launcher 没把它转成 `--build-arg`（见文末「未验证」）。
-这时 apt 层仍可经 `docker.service.d/http-proxy.conf` 里配的 daemon 代理出去，
-gem 层由 `templates/web.china.template.yml` 换成国内源；两层都不需要容器内的代理变量，
-构建就能继续，但浏览器里访问 GitHub 之类的地址仍要走 I2.1 的隧道。
+这时 apt 层仍可经 `docker.service.d/http-proxy.conf` 里配的 daemon 代理出去；
+gem 层不要再依赖 `templates/web.china.template.yml`（它会把 github.com 改写到已失效的
+`mirror.ghproxy.com`，见 I2.0 的坑），改为在 `before_web` 钩子里显式把 `bundle config`
+指向一个实测可用的 rubygems 镜像；构建就能继续，但浏览器里访问 GitHub 之类的地址仍要走 I2.1 的隧道。
 
 ## I2 验收
 
@@ -589,7 +590,9 @@ HTTP/2 200
   `curl -H 'X-Forwarded-For: 1.2.3.4' https://CHANGEME.forum.domain`，然后在管理后台看记录到的 IP 不是 1.2.3.4。
 - **`./launcher rebuild` 是否把 shell 里的 `http_proxy`/`https_proxy`/`no_proxy` 转成
   `--build-arg`**：未核对当前 discourse_docker 的 launcher 源码。用 I2.5 的
-  `docker exec app env | grep -i proxy` 确认；不生效就改用 daemon 级代理 + `web.china.template.yml`。
+  `docker exec app env | grep -i proxy` 确认；不生效就改用 daemon 级代理。
+  不要用 `web.china.template.yml` 当备选：它把 github.com 改写到 `mirror.ghproxy.com`，
+  那个站不通时 `git fetch` 会无限重试（见 I2.0）。
 - **`infra/caddy/Caddyfile` 与 `infra/systemd/*.service` 的语法**：本机没有 caddy 和 systemd，
   未做校验。上真机后按手册里的 `caddy validate` / `systemctl daemon-reload` 通过为准，
   单元文件可用 `systemd-analyze verify frps.service` 再检查一遍。
