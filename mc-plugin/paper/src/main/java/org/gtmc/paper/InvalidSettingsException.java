@@ -1,9 +1,13 @@
 package org.gtmc.paper;
 
-/** config.yml 里某一项缺失或不合法。消息会原样写进日志，所以必须点明是哪个配置项、该怎么改。 */
-final class InvalidSettingsException extends Exception {
+/**
+ * 配置里某一项缺失或不合法。消息会原样写进日志，所以必须点明是哪个配置项、该怎么改。
+ *
+ * <p>线程约定：无状态，任何线程都可以抛出和读取。
+ */
+public final class InvalidSettingsException extends Exception {
 
-  InvalidSettingsException(String message) {
+  public InvalidSettingsException(String message) {
     super(message);
   }
 }
