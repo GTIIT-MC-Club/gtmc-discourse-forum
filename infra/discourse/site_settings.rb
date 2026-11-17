@@ -33,6 +33,11 @@ SETTINGS = {
   # 用来在没有站内聊天的情况下让大家知道彼此在不在、在忙什么。
   enable_user_status: true,
 
+  # 引导机器人（名字、头像、台词由 narrative_bot.rb 配置）在新用户注册后自动发教程私信。
+  # 插件默认把这条欢迎私信关掉（disable_discourse_narrative_bot_welcome_post 默认为 true），
+  # 不改的话新用户收不到教程，台词写得再好也没人看到。已注册的用户不受影响，不会补发。
+  disable_discourse_narrative_bot_welcome_post: false,
+
   # 字体用系统字体栈（core 的 System 项，key 为 system）。
   # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
   # 清掉核心默认的 Discourse Logo 图片：有 Logo 图时页头显示图片，主题的像素字体站点标题就不会出现。
