@@ -295,7 +295,7 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 ### T1 主题基础
 
 - 建 `theme/`：`about.json`、深浅两套配色、`common/`、`desktop/`、`mobile/` 样式。
-- 视觉方向：深色优先；草方块绿做强调色；标题和 Logo 用开源像素字体（Fusion Pixel 或 Ark Pixel，OFL 协议，
+- 视觉方向：跟随系统的浅色/深色模式（主题的浅色配色设为 `GTMC Light`，深色配色设为 `GTMC Dark`，两套都允许用户自选）；草方块绿做强调色；标题和 Logo 用开源像素字体（Fusion Pixel 或 Ark Pixel，OFL 协议，
   子集化后随主题分发），**正文用系统字体**保证可读；圆角收小、边框硬朗，呼应方块感，但不要整站像素化。
 - 借鉴 Linux.do 的布局：左侧边栏导航、紧凑的话题列表、醒目的分类色标。
 - 颜色只通过 Discourse 的配色方案和 CSS 变量取用，样式里不写死色值。
