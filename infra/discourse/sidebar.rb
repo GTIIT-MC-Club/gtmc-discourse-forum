@@ -1,9 +1,9 @@
 # 侧边栏与版块外观初始化，可重复执行：版块顺序和图标、全站默认侧边栏版块、「社区」区的链接、
-# 删除核心自带的 General 和 Site Feedback 版块。
+# 删除核心自带的 General 和 Site Feedback 版块、把页脚的站内链接写进 GTMC 主题的设置。
 #
 # 必须在下面两件事之后执行，缺了会直接报错退出：
 #   1. infra/discourse/site_settings.rb 已执行（版块由它创建，这里按名字查找）；
-#   2. GTMC 主题已导入（图标来自主题的图标精灵）。
+#   2. GTMC 主题已导入（图标来自主题的图标精灵，页脚链接写进主题设置）。
 # 所以单独成一个文件，而不是追加进 site_settings.rb：那个脚本要在导入主题前就能执行。
 #
 # 用法（在自有机器上）：
@@ -27,6 +27,7 @@ CATEGORY_ICONS = [
 ]
 
 ANNOUNCEMENT_CATEGORY_NAME = "公告"
+APPEAL_CATEGORY_NAME = "白名单与申诉"
 # 置顶帖「新人指南」的标题以此开头（infra/content/newcomer-guide.md 的一级标题）
 NEWCOMER_GUIDE_TITLE_PREFIX = "新人指南"
 
@@ -205,6 +206,20 @@ def apply_community_section(links)
   puts "updated community sidebar section: #{links.map { |link| link[:name] }.join(", ")}"
 end
 
+# 页脚的「新人指南」「白名单与申诉」与侧边栏指向同一处。地址带数据库 id，主题里没法写死，所以由这里写入。
+def apply_footer_settings(theme, footer_urls)
+  footer_urls.each do |setting_name, url|
+    if theme.settings[setting_name].value == url
+      puts "theme setting #{setting_name} is up to date"
+      next
+    end
+
+    theme.update_setting(setting_name, url)
+    theme.save!
+    puts "set theme setting #{setting_name} = #{url}"
+  end
+end
+
 theme = gtmc_theme!
 gtmc_categories = CATEGORY_ICONS.map { |name, _icon| find_category!(name) }
 announcement_category = find_category!(ANNOUNCEMENT_CATEGORY_NAME)
@@ -222,6 +237,11 @@ puts "set fixed_category_positions = true"
 apply_category_order(gtmc_categories)
 apply_default_sidebar_categories(gtmc_categories)
 apply_community_section(links)
+apply_footer_settings(
+  theme,
+  footer_newcomer_guide_url: guide_url,
+  footer_appeal_url: find_category!(APPEAL_CATEGORY_NAME).url,
+)
 
 # 版块数据有 30 分钟的缓存，缓存键带界面语言（Site.categories_cache_key）。版块保存时核心只清当前语言的键，
 # 而脚本跑在 rails runner 里，当前语言不是站点的 zh_CN，不逐个语言清掉的话，改动要等缓存过期才看得到。
