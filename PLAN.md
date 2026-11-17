@@ -145,7 +145,8 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 
 | 方法 路径 | 调用方 | 期 | 请求 | 响应 |
 |---|---|---|---|---|
-| `GET /gtmc/status.json` | 任何人 | 一 | — | `{refresh_interval_seconds, servers: [{server_id, name, address, map_url, icon, color, online, version, players_online, players_max, players, tps, updated_at}]}`。`servers` 已排好序：在线的在前、按 `players_online` 从多到少，离线的按 `gtmc_servers` 的顺序。某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null`。`players` 是 `[{mc_name, avatar_template}]`：**只对登录用户返回**，游客拿到 `null`（人数照常返回）；`avatar_template` 在 P2 绑定前用游戏名生成字母头像，绑定后用对应论坛账号的头像 |
+| `GET /gtmc/status.json` | 任何人 | 一 | — | `{refresh_interval_seconds（固定 30，与 MC 插件默认的心跳间隔一致；前端的轮询周期和刷新圆环都取它）, servers: [{server_id, name, address, map_url, icon, color, online, version, players_online, players_max, players, tps, updated_at}]}`。`servers` 已排好序：在线的在前、按 `players_online` 从多到少，离线的按 `gtmc_servers` 的顺序。某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null`。`players` 是 `[{mc_name, avatar_template}]`：**只对登录用户返回**，游客拿到 `null`（人数照常返回）；`avatar_template` 在 P2 绑定前用游戏名生成字母头像，绑定后用对应论坛账号的头像 |
+| `GET /gtmc/newcomer_guide.json` | 任何人 | 一 | — | `{topic_url, read}`：置顶的「新人指南」帖的地址（找不到或当前用户看不见则为 `null`）、当前登录用户是否读过它（游客恒为 `false`）。右栏「新人进服」面板用它判断第二步 |
 | `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}`；缺 `server_id` 或它不是字符串属于请求本身有问题，返回 400 |
 | `GET /gtmc/account.json` | 用户 | 二 | — | `{mc_name}`（未绑定为 `null`），`{renamable_at}` |
 | `PUT /gtmc/account.json` | 用户 | 二 | `{mc_name}` | 成功同上；不合法或被占用返回 422 和可读的中文原因 |
@@ -178,12 +179,12 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
   同一 IP 在信任期内进任何一个服都免码。
 
 站点设置（都以 `gtmc_` 开头）：`gtmc_enabled`、`gtmc_ip_trust_hours`、`gtmc_login_code_ttl_seconds`、
-`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`。
+`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`、`gtmc_rail_visible_servers`（默认 3，右栏「服务器」面板默认展开的服数量，其余折叠）。
 
-`gtmc_servers` 登记所有服，每项六个字段：`server_id`、`name`（展示名，如「生存服」）、`icon`（图标名，`gtmc-` 开头的主题像素图标或 Font Awesome 图标）、`color`（图标颜色，可空，空则用主题强调色）、`address`（玩家连接用的地址，展示用）、
+`gtmc_servers` 登记所有服，每项六个字段：`server_id`、`name`（展示名，如「生存服」）、`icon`（图标名，`gtmc-` 开头的主题像素图标或 Font Awesome 图标）、`color`（图标颜色，`#RRGGBB` 格式，可空，空则用主题强调色）、`address`（玩家连接用的地址，展示用）、
 `map_url`（可空，空则不显示地图入口；`status.json` 里空的 `map_url` 返回 `null`）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
 当前版本不支持就用 `type: list`，每项写成 `server_id|name|address|map_url`。实现前查 Discourse 源码确认，
-并在插件 README 里写明管理员怎么填。原来的 `gtmc_server_address`、`gtmc_map_url` 两个设置删掉。
+并在插件 README 里写明管理员怎么填。`icon` 用 `type: icon`（后台是图标选择器，`gtmc-*` 主题图标和 Font Awesome 图标都能选）；`server_id`、`icon`、`color` 的格式 schema 管不了，插件读取时检查，不合格的项被忽略（和 `server_id` 重复、格式不对一样）。原来的 `gtmc_server_address`、`gtmc_map_url` 两个设置删掉。
 
 ### 4.2 玩家进服流程（第二期的核心）
 
