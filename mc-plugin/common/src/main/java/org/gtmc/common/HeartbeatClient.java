@@ -1,4 +1,4 @@
-package org.gtmc.paper;
+package org.gtmc.common;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;

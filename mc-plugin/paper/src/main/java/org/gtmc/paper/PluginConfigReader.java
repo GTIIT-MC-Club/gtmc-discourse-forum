@@ -1,6 +1,8 @@
 package org.gtmc.paper;
 
 import org.bukkit.configuration.file.FileConfiguration;
+import org.gtmc.common.InvalidSettingsException;
+import org.gtmc.common.PluginSettings;
 
 /** 把 config.yml 的原始值交给 common 校验。Paper 这一侧只负责「从 YAML 里取值」，规则都在 common。 */
 final class PluginConfigReader {

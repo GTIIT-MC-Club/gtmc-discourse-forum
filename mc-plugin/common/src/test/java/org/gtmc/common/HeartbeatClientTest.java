@@ -1,4 +1,4 @@
-package org.gtmc.paper;
+package org.gtmc.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

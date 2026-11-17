@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.URI;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.gtmc.common.InvalidSettingsException;
+import org.gtmc.common.PluginSettings;
 import org.junit.jupiter.api.Test;
 
 /** 校验规则在 common 里测；这里只确认 config.yml 的每个键都被读进了正确的设置项。 */

@@ -3,6 +3,10 @@ package org.gtmc.paper;
 import java.util.List;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.gtmc.common.HeartbeatClient;
+import org.gtmc.common.HeartbeatPayload;
+import org.gtmc.common.InvalidSettingsException;
+import org.gtmc.common.PluginSettings;
 
 /** GTMC Paper 插件入口。M1 只负责定时把服务器状态上报给论坛。 */
 public final class GtmcPlugin extends JavaPlugin {

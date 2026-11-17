@@ -1,5 +1,7 @@
 dependencies {
-    // Paper 自带 Gson、SnakeYAML 和 Adventure，运行时不再打包任何依赖，所以只用 compileOnly。
+    implementation(project(":common"))
+
+    // Paper 自带 Gson、SnakeYAML 和 Adventure，所以只用 compileOnly；插件 jar 里只额外打包 common。
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 
     // 测试里没有 Paper 服务端，需要自己带上 paper-api 里的 Gson 和 YamlConfiguration。
@@ -28,7 +30,8 @@ tasks.processResources {
     }
 }
 
-tasks.test {
-    // 与生产环境一致：让 java.net.http 允许手动设置 Host 头，见 HeartbeatClient。
-    systemProperty("jdk.httpclient.allowRestrictedHeaders", "host")
+tasks.jar {
+    // common 不是独立的插件，运行时没人替我们加载它，所以把它的类直接放进插件 jar。
+    // 只有 common 在 runtimeClasspath 里：Paper 和 Gson 都是 compileOnly。
+    from({ configurations.runtimeClasspath.get().map { zipTree(it) } })
 }

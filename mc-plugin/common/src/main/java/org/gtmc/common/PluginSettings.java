@@ -1,4 +1,4 @@
-package org.gtmc.paper;
+package org.gtmc.common;
 
 import java.net.URI;
 import java.net.URISyntaxException;
