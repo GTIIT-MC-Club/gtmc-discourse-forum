@@ -2,6 +2,9 @@
 # 放在论坛虚拟机 100（gtmc-forum，192.168.2.111）的 /var/discourse/containers/app.yml，
 # 生效方式：sudo ./launcher rebuild app。
 #
+# 有域名但还没有 VPS 时，对外入口用 Cloudflare Tunnel（见 infra/README.md「Cloudflare Tunnel」）：
+# 部署时用 GTMC_FORUM_HOST 传入域名、GTMC_FORCE_HTTPS 保持 true，本文件不用改。
+#
 # 这是临时配置，不是最终形态。域名和 VPS 到位后按 infra/discourse/app.yml 换成正式版，
 # 然后把本文件删掉——两套配置同时存在会让人不知道该改哪份。
 
@@ -33,7 +36,7 @@ env:
   # 8G 内存配 3 个 worker。扩容到这个 VM 之前不要再加。
   UNICORN_WORKERS: 3
 
-  # 域名没买，先用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
+  # 没有域名时用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
   # 不必每人改 hosts。以后换成正式域名只需改这一行再 rebuild。
   DISCOURSE_HOSTNAME: 192.168.2.111
   # 不设 DISCOURSE_DEVELOPER_EMAILS：邮件关着，用那个邮箱注册也收不到激活信，成不了管理员。
@@ -62,3 +65,17 @@ hooks:
           - git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git /tmp/gtmc-discourse
           - cp -r /tmp/gtmc-discourse/plugins/discourse-gtmc ./discourse-gtmc
           - rm -rf /tmp/gtmc-discourse
+
+run:
+  # 经 Cloudflare Tunnel 进来的请求，在容器看来都来自 cloudflared 所在的这台虚拟机
+  # （经端口映射后是 docker 网桥地址或本机内网地址），真实 IP 在 CF-Connecting-IP 头里。
+  # 不取的话全站共用一个 IP，web.ratelimited 的限流会误伤所有人。
+  # 只信任这两类来源：局域网里其他机器直连时来源是它们自己的地址，伪造的头不会被采用。
+  - replace:
+      filename: /etc/nginx/conf.d/discourse.conf
+      from: /listen 80;/
+      to: |
+        listen 80;
+        set_real_ip_from 172.16.0.0/12;
+        set_real_ip_from 192.168.2.111;
+        real_ip_header CF-Connecting-IP;

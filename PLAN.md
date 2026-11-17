@@ -12,7 +12,7 @@
 | 项 | 结论 |
 |---|---|
 | 运行机器 | 社团自有机器：X99 平台、Debian、64G DDR3，在校内（大陆网络），无公网 IP |
-| 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案 |
+| 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案 。有域名、还没有 VPS 时，过渡用 Cloudflare Tunnel（论坛虚拟机里的 cloudflared 主动连出，Cloudflare 终结 HTTPS，真实 IP 取 `CF-Connecting-IP`），见 `infra/README.md` I2.0a |
 | 注册 | 仅 `@gtiit.edu.cn` 邮箱；游客可只读公开版块 |
 | 规模 | 约 100 人 |
 | MC 服务器 | **4 个互相独立的服**（各有地址，无群组代理），全部接入论坛；纯离线模式，没有任何登录插件。其中有 Paper/Purpur，也有 Fabric/Forge 系的模组服，各服的核心和版本待负责人确认（任务 H2）。与论坛在同一台机器（若改用 PVE 则分属不同虚拟机，见下文） |

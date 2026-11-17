@@ -9,8 +9,11 @@
 #   GTMC_APP_TEMPLATE  用哪份容器配置，默认 app.yml；内网阶段（没有域名）用 app.internal.yml
 #   GTMC_FORCE_HTTPS   传给 site_settings.rb，默认 true；没有 TLS 的阶段必须传 false，
 #                      否则全站 301 到 https:// 而那个端口上没有 TLS
+#   GTMC_FORUM_HOST    覆盖配置里的 DISCOURSE_HOSTNAME。域名属于部署而不属于代码（PLAN 第 1 节），
+#                      临时的测试域名尤其不该提交进仓库，所以在这里传入
 # 例：
 #   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false infra/deploy-discourse.sh
+#   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
 #
 # 可重复执行：app.yml 内容没变就不重建容器（重建有停机），站点脚本本身是幂等的。
 # 顺序依赖见 infra/content/admin-setup.md：站点设置 → 主题 → 侧边栏 → 徽章 → 引导机器人，
@@ -23,6 +26,7 @@ DISCOURSE_DIR="${DISCOURSE_DIR:-/var/discourse}"
 CONTAINER="${CONTAINER:-app}"
 APP_TEMPLATE="$REPO/infra/discourse/${GTMC_APP_TEMPLATE:-app.yml}"
 FORCE_HTTPS="${GTMC_FORCE_HTTPS:-true}"
+FORUM_HOST="${GTMC_FORUM_HOST:-}"
 
 force_rebuild=0
 run_scripts=1
@@ -52,13 +56,31 @@ sync_repository() {
 }
 
 pick_web_hostname() {
-  sed -n 's/^  DISCOURSE_HOSTNAME:[[:space:]]*//p' "$APP_TEMPLATE"
+  sed -n 's/^  DISCOURSE_HOSTNAME:[[:space:]]*//p' "$1"
+}
+
+# 把模板写成最终的 app.yml：只在传了 GTMC_FORUM_HOST 时替换主机名那一行，其余原样。
+render_app_config() {
+  local rendered="$1"
+  if [ -z "$FORUM_HOST" ]; then
+    cp "$APP_TEMPLATE" "$rendered"
+    return
+  fi
+  if ! printf '%s' "$FORUM_HOST" | grep -Eq '^[A-Za-z0-9.-]+$'; then
+    echo "GTMC_FORUM_HOST 只能是主机名（字母、数字、点、连字符），收到：$FORUM_HOST" >&2
+    exit 1
+  fi
+  sed "s/^  DISCOURSE_HOSTNAME:.*/  DISCOURSE_HOSTNAME: $FORUM_HOST/" "$APP_TEMPLATE" >"$rendered"
 }
 
 install_app_config() {
-  local hostname
-  hostname="$(pick_web_hostname)"
-  if grep -q 'CHANGEME' "$APP_TEMPLATE"; then
+  local hostname rendered
+  rendered="$(mktemp)"
+  # shellcheck disable=SC2064  # 立即展开：退出时 rendered 这个局部变量已经不在了
+  trap "rm -f '$rendered'" EXIT
+  render_app_config "$rendered"
+  hostname="$(pick_web_hostname "$rendered")"
+  if grep -q 'CHANGEME' "$rendered"; then
     echo "$APP_TEMPLATE 里还有 CHANGEME 占位符，填好再部署（内网阶段用 GTMC_APP_TEMPLATE=app.internal.yml）。" >&2
     exit 1
   fi
@@ -68,11 +90,11 @@ install_app_config() {
   fi
   echo "== 容器配置来自 $APP_TEMPLATE（DISCOURSE_HOSTNAME=$hostname）"
 
-  if [ -f "$DISCOURSE_DIR/containers/app.yml" ] && cmp -s "$APP_TEMPLATE" "$DISCOURSE_DIR/containers/app.yml"; then
+  if [ -f "$DISCOURSE_DIR/containers/app.yml" ] && cmp -s "$rendered" "$DISCOURSE_DIR/containers/app.yml"; then
     echo "   内容和已装的一致，不需要重建"
     needs_rebuild=0
   else
-    install -o root -g root -m 644 "$APP_TEMPLATE" "$DISCOURSE_DIR/containers/app.yml"
+    install -o root -g root -m 644 "$rendered" "$DISCOURSE_DIR/containers/app.yml"
     echo "   已更新 $DISCOURSE_DIR/containers/app.yml"
     needs_rebuild=1
   fi

@@ -324,6 +324,52 @@ HOME$ cd /var/discourse && sudo ./launcher rebuild app
 仓库从 2026-11-18 起是公开的，所以容器里 `hooks.after_code` 的 `git clone` 不需要令牌；
 私有仓库时要换成只读 Deploy Key，不要把 PAT 写进 `app.yml`。
 
+## I2.0a 有域名、没有 VPS：用 Cloudflare Tunnel 对外
+
+域名托管在 Cloudflare 上时，可以先不买 VPS：在论坛虚拟机里跑 `cloudflared`，它主动连到 Cloudflare，
+HTTPS 由 Cloudflare 终结，家里不用开端口。这是过渡方案，原因有两个：
+
+- Cloudflare 免费版在大陆没有节点，国内访问要绕路，速度随运营商和时段波动。要用手机流量、校园网实测过再决定长期用不用。
+- 第三期的 bridge 必须在境外机器上和 Discord 通信，到时候 VPS 还是要买，入口可以一起迁回 Caddy + frp。
+
+**1. 在 Cloudflare 后台建 tunnel**（只能在网页上做）：Zero Trust → Networks → Tunnels → Create a tunnel →
+Cloudflared，起名 `gtmc-forum`。Public Hostname 填论坛域名（如 `tempforum.<domain>`），
+Service 选 HTTP、地址 `192.168.2.111:8880`（`app.internal.yml` 的 `expose` 只绑这个地址，不绑回环）。
+复制页面上 `cloudflared service install` 后面那串 token。token 能冒充这条隧道，不要发到群里或提交进仓库。
+
+**2. 在论坛虚拟机上装 cloudflared**（Cloudflare 的 apt 源，跟着系统一起升级）：
+
+```
+HOME$ sudo mkdir -p --mode=0755 /usr/share/keyrings
+HOME$ curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+HOME$ echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' \
+        | sudo tee /etc/apt/sources.list.d/cloudflared.list
+HOME$ sudo apt-get update && sudo apt-get install -y cloudflared
+HOME$ sudo cloudflared service install <token>
+HOME$ journalctl -u cloudflared -n 30 --no-pager | grep -i 'registered tunnel connection'
+```
+
+正常会看到 4 行 `Registered tunnel connection`。没有的话看日志里是不是 QUIC（UDP 7844）连不上，
+是的话在 `/etc/systemd/system/cloudflared.service` 的启动参数里加 `--protocol http2` 后 `systemctl daemon-reload && systemctl restart cloudflared`。
+
+**3. 用域名重新部署**。`GTMC_FORCE_HTTPS` 保持默认的 true：浏览器到 Cloudflare 这一段是 HTTPS，
+cloudflared 会带上 `X-Forwarded-Proto: https`，Discourse 据此生成 https 链接。
+
+```
+HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.<domain> \
+        ~/gtmc-discourse/infra/deploy-discourse.sh
+```
+
+之后 `http://192.168.2.111:8880` 不再是可用的入口：页面里的链接、登录后的跳转都指向域名，
+登录 cookie 也只在 https 下发。调试时直接 `curl -H 'Host: tempforum.<domain>' http://192.168.2.111:8880/`。
+
+**4. 验收**：
+
+- 在虚拟机上 `curl -sI https://tempforum.<domain>/ | head -1` 返回 200。
+  不要用开着代理的电脑测 DNS 和速度：代理软件的 fake-ip 会让 `dig` 返回 `198.18.x.x`，速度测的也是代理线路。
+- 用手机流量打开一次论坛，再看 `/var/discourse/shared/standalone/log/var-log/nginx/access.log` 最后一行，
+  来源 IP 应该是手机的公网地址，不是 `172.x` 或 `192.168.2.111`。是后者说明真实 IP 没取到，限流会误伤所有人。
+
 ## I2.1 建立 SSH 隧道到 VPS 的代理
 
 在自有机器上开一条到 VPS 的本地转发。`-N` 表示只转发不开 shell，这条命令会一直占着终端，
