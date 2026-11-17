@@ -145,7 +145,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 
 | 方法 路径 | 调用方 | 期 | 请求 | 响应 |
 |---|---|---|---|---|
-| `GET /gtmc/status.json` | 任何人 | 一 | — | `{servers: [{server_id, name, address, map_url, online, version, players_online, players_max, player_names[], tps, updated_at}]}`，顺序与 `gtmc_servers` 一致；某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null` |
+| `GET /gtmc/status.json` | 任何人 | 一 | — | `{refresh_interval_seconds, servers: [{server_id, name, address, map_url, icon, color, online, version, players_online, players_max, players, tps, updated_at}]}`。`servers` 已排好序：在线的在前、按 `players_online` 从多到少，离线的按 `gtmc_servers` 的顺序。某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null`。`players` 是 `[{mc_name, avatar_template}]`：**只对登录用户返回**，游客拿到 `null`（人数照常返回）；`avatar_template` 在 P2 绑定前用游戏名生成字母头像，绑定后用对应论坛账号的头像 |
 | `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}`；缺 `server_id` 或它不是字符串属于请求本身有问题，返回 400 |
 | `GET /gtmc/account.json` | 用户 | 二 | — | `{mc_name}`（未绑定为 `null`），`{renamable_at}` |
 | `PUT /gtmc/account.json` | 用户 | 二 | `{mc_name}` | 成功同上；不合法或被占用返回 422 和可读的中文原因 |
@@ -180,7 +180,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 站点设置（都以 `gtmc_` 开头）：`gtmc_enabled`、`gtmc_ip_trust_hours`、`gtmc_login_code_ttl_seconds`、
 `gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`。
 
-`gtmc_servers` 登记所有服，每项四个字段：`server_id`、`name`（展示名，如「生存服」）、`address`（玩家连接用的地址，展示用）、
+`gtmc_servers` 登记所有服，每项六个字段：`server_id`、`name`（展示名，如「生存服」）、`icon`（图标名，`gtmc-` 开头的主题像素图标或 Font Awesome 图标）、`color`（图标颜色，可空，空则用主题强调色）、`address`（玩家连接用的地址，展示用）、
 `map_url`（可空，空则不显示地图入口；`status.json` 里空的 `map_url` 返回 `null`）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
 当前版本不支持就用 `type: list`，每项写成 `server_id|name|address|map_url`。实现前查 Discourse 源码确认，
 并在插件 README 里写明管理员怎么填。原来的 `gtmc_server_address`、`gtmc_map_url` 两个设置删掉。
@@ -361,7 +361,42 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
   1440 宽话题页上标题、帖子、按钮行、推荐话题的左右边缘对齐，侧边栏展开、收起时开关横坐标不变且与正文左边缘对齐；
   按钮、侧边栏项、话题列表行的键盘焦点都有清晰的焦点环；stylelint、prettier、eslint 通过；正文对比度保持 WCAG AA。
 
-### C1 内容与社区机制
+### T5 按 C 方案重做界面（设计稿已定）
+
+设计依据：`design/mockups/c-server-first.html`（首页）、`c-topic.html`（话题页）、`c-mobile-home.html`（手机首页），
+`design/brand/`（社团 Logo、8×8 图标）。设计规则写在 `AGENTS.md`「界面规则」，验收逐条对照。
+设计稿是静态示意：布局、尺寸、交互状态以它为准，具体写法按 Discourse 的方式实现，不照抄设计稿的 HTML。
+
+分工（按 `AGENTS.md`：跟 MC 和我们自己数据有关的界面放插件，纯外观放主题）：
+
+**T5a 主题**（`theme/`）
+- 三栏布局：左侧边栏、中间内容、右栏。右栏由主题提供一个插件出口 `gtmc-right-rail`（`<PluginOutlet @name="gtmc-right-rail">`），
+  只在首页、版块列表和话题页出现；手机宽度不显示右栏（插件自己在手机上换形态，见 T5b）。话题页右栏放话题相关的面板：参与者、阅读进度、同版块话题。
+- 侧边栏选中项用「荧光笔」样式（加粗 + 文字下半截半透明强调色），不用左边框、不用整行底色。
+- 图标：`theme/icons/` 全部换成 `design/brand/icons-8x8/` 的 8×8 版本（`import_theme.rb` 拼精灵的逻辑不变）。
+- Logo：删掉主题里给站点标题套像素字体的样式和 `site_settings.rb` 里清空 `logo`/`logo_small` 的两项；Logo 改由管理员在后台上传
+  （`design/brand/gtmc-logo-3x.png`），主题只给 `#site-logo` 加 `image-rendering: pixelated`。小 Logo 暂缺（待负责人定），先留核心默认。
+- 像素字体只用于标签（版块标签、置顶、版本号）、在线人数和日期块，字号只取 12px 的整数倍并关闭抗锯齿；正文、标题、按钮、提示一律系统字体。
+- 动效令牌：`--gtmc-duration-state`（120ms）、`--gtmc-tooltip-delay`（400ms）、`--gtmc-ease`，`prefers-reduced-motion` 时时长为 0。
+- 全局提示：移植 OpenCard 的 `globalTooltip.ts`（本机 `~/Documents/GitHub/OpenCard/opencard-app/src/shared/ui/tooltip/`，规则见其 `docs/UI_RULES.md`
+  「浮层提示」一节）：元素用 `data-tooltip` 声明，默认贴鼠标并跟随，键盘聚焦贴控件，首次延迟、相邻控件同组即时切换。
+  核心的 DTooltip 只改外观使之与我们一致（深底、系统字体、圆角、动效令牌），行为不改。
+- T4a 的「宽度对齐」「交互状态」等覆盖核心选择器的规则，按新设计重新审视：能挪到配色或核心变量的挪过去，用不上的删掉。
+
+**T5b 插件**（`plugins/discourse-gtmc/`）
+- 按 4.1 新契约改 `status.json`（排序、`icon`/`color`、`players` 及其登录可见、`refresh_interval_seconds`），`gtmc_servers` 加 `icon`、`color` 字段；
+  新增站点设置 `gtmc_rail_visible_servers`（默认 3）。
+- 右栏「服务器」面板，渲染进 `gtmc-right-rail`：标题旁的刷新倒计时圆环（周期取 `refresh_interval_seconds`，不写死）、在线总人数、
+  每服一行固定两行高（图标块含状态角标、服名、版本标签、人数；头像叠 5 个 + `+N`，没人时占位文字；右下复制地址的正方形按钮），
+  超过 `gtmc_rail_visible_servers` 的折叠，「+N ⌄」展开。原首页顶部的服务器卡片删掉。
+- 右栏「新人进服」面板：注册、读新人指南（读过置顶的新人指南帖即算）、绑定游戏名、输入登录码四步；后两步在 P2/P3 完成前恒为未完成。全部完成后面板不再出现。
+- 右栏「近期活动」面板：读 `discourse-events` 的活动数据，日期块 48×48。
+- 手机：右栏面板改为首页顶部的横向服务器状态条 + 新人进度卡（只显示下一步），见 `c-mobile-home.html`。
+- 发帖人旁显示绑定的游戏名（P2 前不显示）。
+
+两项可并行；T5b 依赖 T5a 的出口名 `gtmc-right-rail`，这个名字以本节为准。
+
+
 
 - 版块已由 `site_settings.rb` 创建。为每个版块写发帖模板（如白名单申请、建筑展示、活动报名），追加进该脚本。
 - 调整信任等级门槛以适配 200 人的小社区（默认值是为大站设计的），设置写进脚本并在注释里说明每一项为什么这么调。
