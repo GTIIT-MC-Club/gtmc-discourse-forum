@@ -22,6 +22,7 @@ final class PluginConfigReader {
         config.getString("forum_url", ""),
         config.getString("forum_host", ""),
         config.getString("api_key", ""),
+        config.getString("server_id", ""),
         config.getInt("heartbeat_interval_seconds", DEFAULT_HEARTBEAT_INTERVAL_SECONDS));
   }
 }

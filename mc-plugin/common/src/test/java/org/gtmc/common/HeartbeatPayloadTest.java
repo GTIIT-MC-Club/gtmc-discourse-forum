@@ -12,12 +12,15 @@ class HeartbeatPayloadTest {
 
   @Test
   void serializesExactlyTheFieldsOfTheHeartbeatContractInSnakeCase() {
-    var payload = new HeartbeatPayload("1.21.11", 2, 20, List.of("Steve", "Alex_01"), 19.98);
+    var payload =
+        new HeartbeatPayload("survival", "1.21.11", 2, 20, List.of("Steve", "Alex_01"), 19.98);
 
     JsonObject json = JsonParser.parseString(payload.toJson()).getAsJsonObject();
 
     assertEquals(
-        Set.of("version", "players_online", "players_max", "player_names", "tps"), json.keySet());
+        Set.of("server_id", "version", "players_online", "players_max", "player_names", "tps"),
+        json.keySet());
+    assertEquals("survival", json.get("server_id").getAsString());
     assertEquals("1.21.11", json.get("version").getAsString());
     assertEquals(2, json.get("players_online").getAsInt());
     assertEquals(20, json.get("players_max").getAsInt());
@@ -29,7 +32,7 @@ class HeartbeatPayloadTest {
 
   @Test
   void serializesAnEmptyServerWithAnEmptyPlayerNamesArray() {
-    var payload = new HeartbeatPayload("1.21.11", 0, 20, List.of(), 20.0);
+    var payload = new HeartbeatPayload("survival", "1.21.11", 0, 20, List.of(), 20.0);
 
     JsonObject json = JsonParser.parseString(payload.toJson()).getAsJsonObject();
 

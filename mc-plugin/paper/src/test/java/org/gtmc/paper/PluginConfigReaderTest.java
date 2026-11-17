@@ -19,6 +19,7 @@ class PluginConfigReaderTest {
       forum_url: "http://127.0.0.1:8880"
       forum_host: "forum.example.test"
       api_key: "real-key"
+      server_id: "survival"
       heartbeat_interval_seconds: 30
       """;
 
@@ -35,6 +36,7 @@ class PluginConfigReaderTest {
     assertEquals(URI.create("http://127.0.0.1:8880"), settings.forumUrl());
     assertEquals("forum.example.test", settings.forumHost());
     assertEquals("real-key", settings.apiKey());
+    assertEquals("survival", settings.serverId());
     assertEquals(30, settings.heartbeatIntervalSeconds());
   }
 
@@ -45,6 +47,15 @@ class PluginConfigReaderTest {
     var error = assertThrows(InvalidSettingsException.class, () -> PluginConfigReader.read(config));
 
     assertTrue(error.getMessage().contains("api_key"), error.getMessage());
+  }
+
+  @Test
+  void reportsAMissingServerIdAsNotSet() throws Exception {
+    var config = parse(VALID_CONFIG.replace("server_id: \"survival\"", ""));
+
+    var error = assertThrows(InvalidSettingsException.class, () -> PluginConfigReader.read(config));
+
+    assertTrue(error.getMessage().contains("server_id is not set"), error.getMessage());
   }
 
   @Test

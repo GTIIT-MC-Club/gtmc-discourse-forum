@@ -12,6 +12,11 @@ forum_host: "CHANGEME"
 # 论坛后台生成的 API Key，用户名选 system，作用域只勾 gtmc:server。
 api_key: "CHANGEME"
 
+# 这个服在论坛的标识，只能用小写字母、数字和 -，最长 32 个字符，如 survival。
+# 必须先在论坛后台的 gtmc_servers 设置里登记同一个 server_id，否则论坛会拒绝心跳。
+# 4 个服各填各的，不能重复。
+server_id: "CHANGEME"
+
 # 心跳间隔，单位秒，取值 10 到 60。
 # 上限 60 是因为论坛 gtmc_heartbeat_timeout_seconds 默认 90 秒没收到心跳就判定离线，
 # 间隔再大，丢一次心跳就会闪成离线。

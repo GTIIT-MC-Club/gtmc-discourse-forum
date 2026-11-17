@@ -16,6 +16,9 @@ public final class GtmcPlugin extends JavaPlugin {
   /** Paper 的 TPS 统计偶尔会略高于 20，展示给玩家看没有意义，统一截到满值。 */
   private static final double FULL_TPS = 20.0;
 
+  /** 只在 onEnable 里赋值，之后只被主线程读取。 */
+  private PluginSettings settings;
+
   private HeartbeatClient heartbeatClient;
 
   @Override
@@ -26,7 +29,6 @@ public final class GtmcPlugin extends JavaPlugin {
   @Override
   public void onEnable() {
     saveDefaultConfig();
-    PluginSettings settings;
     try {
       settings = PluginConfigReader.read(getConfig());
       heartbeatClient = new HeartbeatClient(settings, getLogger());
@@ -46,7 +48,9 @@ public final class GtmcPlugin extends JavaPlugin {
                 + settings.forumUrl()
                 + " every "
                 + settings.heartbeatIntervalSeconds()
-                + "s.");
+                + "s as server_id '"
+                + settings.serverId()
+                + "'.");
   }
 
   @Override
@@ -69,6 +73,7 @@ public final class GtmcPlugin extends JavaPlugin {
         getServer().getOnlinePlayers().stream().map(Player::getName).toList();
     double oneMinuteTps = Math.min(getServer().getTPS()[0], FULL_TPS);
     return new HeartbeatPayload(
+        settings.serverId(),
         getServer().getMinecraftVersion(),
         playerNames.size(),
         getServer().getMaxPlayers(),

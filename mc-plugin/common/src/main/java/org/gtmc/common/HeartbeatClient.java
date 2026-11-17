@@ -38,9 +38,15 @@ public final class HeartbeatClient {
 
   private static final int HTTP_OK = 200;
 
+  /** PLAN.md 4.1 心跳响应里 status 的取值。 */
+  private static final String STATUS_OK = "ok";
+
+  private static final String STATUS_UNKNOWN_SERVER = "unknown_server";
+
   private final HttpClient httpClient;
   private final HttpRequest.Builder requestTemplate;
   private final Logger logger;
+  private final String serverId;
   private final int heartbeatIntervalSeconds;
 
   /** 最近一次失败的原因；为 null 表示最近一次心跳成功（或还没发过）。 */
@@ -72,6 +78,7 @@ public final class HeartbeatClient {
    */
   public HeartbeatClient(PluginSettings settings, Logger logger) {
     this.logger = logger;
+    this.serverId = settings.serverId();
     this.heartbeatIntervalSeconds = settings.heartbeatIntervalSeconds();
     // 强制 HTTP/1.1：默认会在 http:// 上发 h2c 升级请求，对 Discourse 的 nginx 没有好处。
     this.httpClient =
@@ -149,14 +156,22 @@ public final class HeartbeatClient {
   }
 
   /** 返回失败原因，成功返回 null。论坛的业务结论是 HTTP 200 加 status 枚举（PLAN.md 4.1）。 */
-  private static String describeProblem(HttpResponse<String> response) {
+  private String describeProblem(HttpResponse<String> response) {
     if (response.statusCode() != HTTP_OK) {
       return "forum answered HTTP " + response.statusCode() + hintFor(response.statusCode());
     }
     try {
       JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
-      boolean accepted = body.has("status") && "ok".equals(body.get("status").getAsString());
-      return accepted ? null : "forum answered HTTP 200 but status was not ok";
+      String status = body.has("status") ? body.get("status").getAsString() : "";
+      return switch (status) {
+        case STATUS_OK -> null;
+        case STATUS_UNKNOWN_SERVER ->
+            "the forum does not know server_id '"
+                + serverId
+                + "'. Register it in the forum admin: add this server to the gtmc_servers site"
+                + " setting (Admin > Settings > gtmc_servers) with exactly this server_id";
+        default -> "forum answered HTTP 200 but status was not ok";
+      };
     } catch (JsonParseException | IllegalStateException | UnsupportedOperationException e) {
       return "forum answered HTTP 200 but the body was not the expected JSON";
     }

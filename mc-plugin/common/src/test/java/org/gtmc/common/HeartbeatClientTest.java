@@ -29,7 +29,7 @@ class HeartbeatClientTest {
   private static final String API_KEY = "secret-key-that-must-not-be-logged";
   private static final String FORUM_HOST = "forum.example.test";
   private static final HeartbeatPayload PAYLOAD =
-      new HeartbeatPayload("1.21.11", 1, 20, List.of("Steve"), 20.0);
+      new HeartbeatPayload("survival", "1.21.11", 1, 20, List.of("Steve"), 20.0);
 
   /** 假论坛收到的一次请求。 */
   private record ReceivedRequest(
@@ -101,7 +101,7 @@ class HeartbeatClientTest {
           public void close() {}
         });
     return new HeartbeatClient(
-        new PluginSettings(URI.create(forumUrl), FORUM_HOST, API_KEY, 30), logger);
+        new PluginSettings(URI.create(forumUrl), FORUM_HOST, API_KEY, "survival", 30), logger);
   }
 
   private List<String> loggedMessages(Level level) {
@@ -201,6 +201,30 @@ class HeartbeatClientTest {
     client.send(PAYLOAD);
 
     assertEquals(1, loggedMessages(Level.WARNING).size());
+  }
+
+  @Test
+  void warnsOnceThatTheServerIdMustBeRegisteredWhenTheForumDoesNotKnowIt() {
+    forumResponseBody = "{\"status\":\"unknown_server\"}";
+
+    client.send(PAYLOAD);
+    client.send(PAYLOAD);
+
+    List<String> warnings = loggedMessages(Level.WARNING);
+    assertEquals(1, warnings.size());
+    assertTrue(warnings.get(0).contains("'survival'"), warnings.get(0));
+    assertTrue(warnings.get(0).contains("gtmc_servers"), warnings.get(0));
+  }
+
+  @Test
+  void logsRecoveryOnceTheServerIdHasBeenRegistered() {
+    forumResponseBody = "{\"status\":\"unknown_server\"}";
+    client.send(PAYLOAD);
+    forumResponseBody = "{\"status\":\"ok\"}";
+    client.send(PAYLOAD);
+
+    assertEquals(1, loggedMessages(Level.WARNING).size());
+    assertEquals(1, loggedMessages(Level.INFO).size());
   }
 
   @Test

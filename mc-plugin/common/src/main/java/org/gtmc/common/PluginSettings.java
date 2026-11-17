@@ -2,6 +2,7 @@ package org.gtmc.common;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.regex.Pattern;
 
 /**
  * 插件配置的校验结果。各平台在启动时读出原始配置值，交给 {@link #validate} 一次校验完， 之后业务代码只拿这个 record。
@@ -11,14 +12,18 @@ import java.net.URISyntaxException;
  * @param forumUrl 论坛地址，已确认是带主机名的 http/https 地址
  * @param forumHost 直连回环时放进 Host 头的论坛域名
  * @param apiKey 论坛 API Key；绝不写进日志
+ * @param serverId 这个服在论坛 gtmc_servers 里登记的标识，已确认符合 SERVER_ID_FORMAT
  * @param heartbeatIntervalSeconds 心跳间隔，在 [MIN_HEARTBEAT_INTERVAL_SECONDS,
  *     MAX_HEARTBEAT_INTERVAL_SECONDS] 内
  */
 public record PluginSettings(
-    URI forumUrl, String forumHost, String apiKey, int heartbeatIntervalSeconds) {
+    URI forumUrl, String forumHost, String apiKey, String serverId, int heartbeatIntervalSeconds) {
 
   /** 论坛占位符，出现在配置里说明部署的人还没填。 */
   private static final String PLACEHOLDER = "CHANGEME";
+
+  /** PLAN.md 4.1 规定的 server_id 格式。论坛用同一个格式校验 gtmc_servers 的登记项。 */
+  private static final Pattern SERVER_ID_FORMAT = Pattern.compile("^[a-z0-9-]{1,32}$");
 
   /** 下限要大于单次请求的最长耗时（见 HeartbeatClient 的两个超时之和），否则上一次还没结束下一次就开始了。 */
   public static final int MIN_HEARTBEAT_INTERVAL_SECONDS = 10;
@@ -32,11 +37,16 @@ public record PluginSettings(
    * @throws InvalidSettingsException 任何一项缺失、仍是占位符或不合法
    */
   public static PluginSettings validate(
-      String rawForumUrl, String rawForumHost, String rawApiKey, int heartbeatIntervalSeconds)
+      String rawForumUrl,
+      String rawForumHost,
+      String rawApiKey,
+      String rawServerId,
+      int heartbeatIntervalSeconds)
       throws InvalidSettingsException {
     URI forumUrl = parseForumUrl(rawForumUrl);
     String forumHost = requireFilledIn(rawForumHost, "forum_host");
     String apiKey = requireFilledIn(rawApiKey, "api_key");
+    String serverId = parseServerId(rawServerId);
     if (heartbeatIntervalSeconds < MIN_HEARTBEAT_INTERVAL_SECONDS
         || heartbeatIntervalSeconds > MAX_HEARTBEAT_INTERVAL_SECONDS) {
       throw new InvalidSettingsException(
@@ -48,7 +58,19 @@ public record PluginSettings(
               + heartbeatIntervalSeconds
               + ". Fix it in the config file and restart the server.");
     }
-    return new PluginSettings(forumUrl, forumHost, apiKey, heartbeatIntervalSeconds);
+    return new PluginSettings(forumUrl, forumHost, apiKey, serverId, heartbeatIntervalSeconds);
+  }
+
+  private static String parseServerId(String rawServerId) throws InvalidSettingsException {
+    String serverId = requireFilledIn(rawServerId, "server_id");
+    if (!SERVER_ID_FORMAT.matcher(serverId).matches()) {
+      throw new InvalidSettingsException(
+          "server_id must be 1 to 32 characters of lowercase letters, digits and '-' such as"
+              + " survival, but is '"
+              + serverId
+              + "'. Fix it in the config file and restart the server.");
+    }
+    return serverId;
   }
 
   private static URI parseForumUrl(String rawForumUrl) throws InvalidSettingsException {
