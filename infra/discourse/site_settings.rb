@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # 站点设置与版块初始化，可重复执行。
 # 用法（在自有机器上）：
 #   docker cp site_settings.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
@@ -25,6 +27,16 @@ SETTINGS = {
   # 关掉核心自带的聊天（侧边栏随之没有「频道」区）。聊天统一走 Discord，MC 服和论坛的消息也汇到那里（PLAN 4.3）；
   # 再开一处站内聊天，消息会分散在两个地方。
   chat_enabled: false,
+
+  # 自定义状态：用户菜单里的「设置自定义状态」，成员可以挂一个表情加一句话（如「在挖矿」「在赶作业」），
+  # 显示在头像旁和用户卡片上。核心默认关闭；它不依赖聊天，也没有运行成本，
+  # 用来在没有站内聊天的情况下让大家知道彼此在不在、在忙什么。
+  enable_user_status: true,
+
+  # 引导机器人（名字、头像、台词由 narrative_bot.rb 配置）在新用户注册后自动发教程私信。
+  # 插件默认把这条欢迎私信关掉（disable_discourse_narrative_bot_welcome_post 默认为 true），
+  # 不改的话新用户收不到教程，台词写得再好也没人看到。已注册的用户不受影响，不会补发。
+  disable_discourse_narrative_bot_welcome_post: false,
 
   # 字体用系统字体栈（core 的 System 项，key 为 system）。
   # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
