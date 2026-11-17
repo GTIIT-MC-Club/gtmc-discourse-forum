@@ -1,0 +1,24 @@
+# 自有机器（校内）：/etc/systemd/system/frpc.service
+# 生效：`sudo systemctl daemon-reload && sudo systemctl enable --now frpc`，之后 `systemctl status frpc`。
+# 官方 release 压缩包里也带了一份 frpc.service，二选一，不要两份同时启用。
+
+[Unit]
+Description=frp client (publishes the local Discourse container through the VPS)
+After=network-online.target docker.service
+Wants=network-online.target
+# 容器没起来时隧道先建好也无害（Caddy 只会拿到 502），所以 docker 用 Wants 而不是 Requires：
+# 论坛容器重建期间 frpc 不该被连带重启
+Wants=docker.service
+
+[Service]
+Type=simple
+User=nobody
+
+Restart=on-failure
+RestartSec=5s
+
+ExecStart=/usr/bin/frpc -c /etc/frp/frpc.toml
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

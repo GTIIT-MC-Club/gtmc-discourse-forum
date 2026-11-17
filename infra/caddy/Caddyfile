@@ -1,0 +1,19 @@
+# 境外 VPS：/etc/caddy/Caddyfile
+# 生效：`sudo caddy validate --config /etc/caddy/Caddyfile` 通过后 `sudo systemctl reload caddy`。
+# 配置写错时 reload 会失败并保留旧配置，站点不会掉线。
+#
+# CHANGEME.forum.domain 换成真实域名（PLAN 第 1 节的 FORUM_HOST 占位符）。
+# 域名 A 记录指向本机后，Caddy 自动向 Let's Encrypt 申请证书，无需另配 email。
+# 证书续期也由 Caddy 自己完成，不要再用 certbot 接管 80/443。
+
+CHANGEME.forum.domain {
+	# 流量路径：浏览器 → 这里 → frps 在回环上的 8880 → frp 隧道 → 自有机器上的 Discourse。
+	# reverse_proxy 默认补上 X-Forwarded-For / X-Forwarded-Proto / X-Forwarded-Host，
+	# 并用客户端真实地址覆盖来访请求里自带的 X-Forwarded-For。
+	# Discourse 靠这几个头取真实 IP，所以不要加 header_up 覆盖它们，
+	# 也不要设置全局 trusted_proxies（本机前面没有别的反向代理）。
+	reverse_proxy 127.0.0.1:8880
+}
+
+# 第三期的 CONNECT_HOST（bridge）和可选的 MAP_HOST（BlueMap）在两个项目就绪后加在本文件末尾，
+# 反代目标同样是 frp 转出来的回环端口。
