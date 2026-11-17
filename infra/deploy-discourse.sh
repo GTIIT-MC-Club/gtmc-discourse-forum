@@ -46,13 +46,16 @@ require_root() {
   fi
 }
 
-# 仓库属主是普通用户、脚本用 root 跑，git 会因为属主不一致拒绝操作，所以每次都显式声明目录。
+# 仓库属主是普通用户、脚本用 root 跑。以 root 执行 git pull 会在 .git 里留下 root 的文件，
+# 之后属主自己 pull 就报权限错误，所以切回属主身份去拉。
 sync_repository() {
   if [ ! -d "$REPO/.git" ]; then
     return
   fi
-  echo "== 同步仓库 $REPO"
-  git -C "$REPO" -c safe.directory="$REPO" pull --ff-only
+  local owner
+  owner="$(stat -c %U "$REPO")"
+  echo "== 以 $owner 的身份同步仓库 $REPO"
+  sudo -u "$owner" git -C "$REPO" pull --ff-only
 }
 
 pick_web_hostname() {
