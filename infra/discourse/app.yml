@@ -57,7 +57,7 @@ hooks:
           # 所以先浅克隆整个仓库到临时目录，只复制插件目录过来。仓库是私有的话，地址里要带只读的访问令牌。
           # 先 rm 两个目录，是为了在同一个容器里重跑这个钩子时结果不变（cp -r 遇到已有目录会套一层）。
           - rm -rf /tmp/gtmc-discourse ./discourse-gtmc
-          - git clone --depth 1 https://github.com/CHANGEME/gtmc-discourse.git /tmp/gtmc-discourse
+          - git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git /tmp/gtmc-discourse
           - cp -r /tmp/gtmc-discourse/plugins/discourse-gtmc ./discourse-gtmc
           - rm -rf /tmp/gtmc-discourse
 
