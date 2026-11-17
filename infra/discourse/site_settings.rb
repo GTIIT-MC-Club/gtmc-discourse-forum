@@ -5,12 +5,20 @@
 #   docker cp site_settings.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
 #     bundle exec rails runner /tmp/site_settings.rb
 # 设置名写错会直接报错退出，不会静默跳过。设置名以当前版本 config/site_settings.yml 为准。
+#
+# force_https 由环境变量 GTMC_FORCE_HTTPS 控制，默认 true。
+# 在还没有 TLS 的阶段（只有内网地址、或 VPS 与域名还没到位）要用 false 跑，
+# 否则全站会 301 到 https://，而那个端口上没有 TLS，谁都打不开：
+#   docker exec -e GTMC_FORCE_HTTPS=false -u discourse -w /var/www/discourse app \
+#     bundle exec rails runner /tmp/site_settings.rb
+# 域名和 Caddy 就绪后重跑一次（不带这个变量）把它改回 true。
 
 SETTINGS = {
   title: "GTMC 论坛",
   site_description: "广东以色列理工学院 Minecraft 社团",
   default_locale: "zh_CN",
-  force_https: true,
+  # 没有 TLS 的阶段用 GTMC_FORCE_HTTPS=false 跑，见文件头。
+  force_https: ENV.fetch("GTMC_FORCE_HTTPS", "true") == "true",
 
   # 准入：仅校园邮箱可注册，游客只读公开版块
   allowed_email_domains: "gtiit.edu.cn",
