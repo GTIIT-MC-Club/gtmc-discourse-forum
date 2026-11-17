@@ -33,6 +33,10 @@ SETTINGS = {
   # 用来在没有站内聊天的情况下让大家知道彼此在不在、在忙什么。
   enable_user_status: true,
 
+  # 关掉首次安装向导：它的「保存并完成」会把默认主题换成核心的 Horizon、配色换成 Clover，
+  # 覆盖 import_theme.rb 的结果。站点初始化已由这些脚本完成，不需要向导。
+  wizard_enabled: false,
+
   # 引导机器人（名字、头像、台词由 narrative_bot.rb 配置）在新用户注册后自动发教程私信。
   # 插件默认把这条欢迎私信关掉（disable_discourse_narrative_bot_welcome_post 默认为 true），
   # 不改的话新用户收不到教程，台词写得再好也没人看到。已注册的用户不受影响，不会补发。
