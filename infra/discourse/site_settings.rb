@@ -22,6 +22,11 @@ SETTINGS = {
   min_first_post_length: 6,
   search_tokenize_chinese: true,
 
+  # 字体用系统字体栈（core 的 System 项，key 为 system）。
+  # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
+  base_font: "system",
+  heading_font: "system",
+
   # 信任等级门槛：Discourse 默认值按万人级社区设计（TL2 要进 20 个话题、读 100 帖、来访 15 天），
   # 本站约 200 人，一天可能只新增一两个话题，照默认值一个学期也升不到 TL2，
   # 用户会觉得「发了帖也没反应」。下面把门槛压到正常参与一两周就能自然达到的量级。
