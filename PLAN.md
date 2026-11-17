@@ -14,7 +14,7 @@
 | 运行机器 | 社团自有机器：X99 平台、Debian、64G DDR3，在校内（大陆网络），无公网 IP |
 | 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案 |
 | 注册 | 仅 `@gtiit.edu.cn` 邮箱；游客可只读公开版块 |
-| 规模 | 约 200 人 |
+| 规模 | 约 100 人 |
 | MC 服务器 | **4 个互相独立的服**（各有地址，无群组代理），全部接入论坛；纯离线模式，没有任何登录插件。其中有 Paper/Purpur，也有 Fabric/Forge 系的模组服，各服的核心和版本待负责人确认（任务 H2）。与论坛在同一台机器（若改用 PVE 则分属不同虚拟机，见下文） |
 | 聊天平台 | Discord |
 | 节奏 | 2 周出 MVP（第一期），之后两期迭代 |
@@ -48,15 +48,14 @@
 代码不用改（MC 插件的 `forum_url` 本来就是配置项），只影响 I2 的装法和几条网络假设。I2 按下面做：
 
 - **存储分工**（2026-11-18 调整完）：
-  - `local-btrfs`：128G 固态（`sdb3`，约 118G 可用），btrfs，数据 single、元数据 DUP。放 PVE 系统、论坛虚拟机和 MC 服的运行盘。
-  - `hdd`：1T 机械盘（`sda3`，约 930G），ext4，挂在 `/mnt/hdd`（fstab 带 `nofail`，PVE 存储设了 `is_mountpoint`）。放 vzdump 整机备份、Discourse 每日备份的同步副本、ISO 和 MC 旧存档。
+  - `local-btrfs`：128G 固态（`sdb3`，约 118G 可用），btrfs，数据 single、元数据 DUP。放 PVE 系统、论坛虚拟机系统盘（25G）和吃 IO 的 MC 服。
+  - `hdd`：1T 机械盘（`sda3`，约 930G），ext4，挂在 `/mnt/hdd`（fstab 带 `nofail`，PVE 存储设了 `is_mountpoint`，权限已开放 `images,rootdir,backup,iso,vztmpl`）。同时承接大容量 MC 服 / 虚拟机磁盘、vzdump 备份、Discourse 备份副本和 ISO。
   - 安装时两块盘被选成了 btrfs RAID0，已在线拆开（balance 转 single/DUP 后 `btrfs device remove /dev/sda3`）。两块盘的 `sda2`/`sdb2` 引导分区都保留，仍由 `proxmox-boot-tool` 同步。
-  - 固态只有 118G，MC 服的存档放不下时，要么加一块固态，要么把存档放 `hdd`。
 - **内网地址**：论坛虚拟机 `192.168.2.111`（`.110` 已被别的设备占用）。
 - **软件源**：中科大和清华的镜像对这台机器返回 403，改用北外 `mirrors.bfsu.edu.cn`（南大、南科大、华为云也可用）。
 
 - **论坛放 KVM 虚拟机，不放 LXC。** Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting、
-  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、8G 内存、50G 磁盘（固态容量有限）；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
+  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机（`100 gtmc-forum`）给 4 核、8G 内存、25G 磁盘（放 `local-btrfs` 固态，开启 `discard`，后续不够可随时 `qm resize` 扩容或再挂 `hdd` 盘放附件/备份）；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
   `UNICORN_WORKERS` 降到 3。CPU 类型选 `host`，开启 qemu-guest-agent。
 - **frpc 装在论坛虚拟机里**，这样「frpc → `127.0.0.1:8880` → 容器」这一段和现在完全一样，`app.yml`、
   `frpc.toml`、Caddy 都不用改。
