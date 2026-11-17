@@ -317,7 +317,7 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 
 - **侧边栏（`infra/discourse/sidebar.rb`，可重复执行）**：8 个版块按「公告、活动、建筑展示、红石与技术、模组与资源、白名单与申诉、水吧、老玩家俱乐部」排序并设为默认侧边栏版块；
   删除核心自带的 General、Site Feedback；「社区」区放最新话题、新人指南、徽章、用户（管理人员另有审核、管理）；`site_settings.rb` 里关闭 `chat_enabled`（聊天走 Discord）。
-- **图标**：`theme/assets/gtmc-icons.svg` 直接编辑，每个图标一个 16×16 的 `<symbol>`（单色 `currentColor`、`crispEdges`），
+- **图标**：`theme/icons/` 里一个图标一个 16×16 的 `.svg` 文件，导入主题时由 `import_theme.rb` 拼成精灵（单色 `currentColor`、`crispEdges`），
   版块设为图标样式。全部原创，不描摹 Mojang 素材（第 0 节非目标）。
 - **页头**：左上角的侧边栏开关在侧边栏展开、收起时位置不变（核心只在侧边栏展开时加宽共用的 `.wrap`，居中的页头随之平移；`desktop.scss` 把页头宽度固定）。
 - **页脚**：Glimmer 组件挂在 `below-footer` 出口。社团名和简介；链接：新人指南、白名单与申诉、关于、Discord 邀请

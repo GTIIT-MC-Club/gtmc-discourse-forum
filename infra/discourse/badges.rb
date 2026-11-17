@@ -112,7 +112,7 @@ def event_regular_query
   SQL
 end
 
-# 图标取自主题的图标精灵（theme/assets/gtmc-icons.svg），与版块、侧边栏用同一套：砖墙、齿轮、蛋糕、指南针。
+# 图标取自主题的像素图标（theme/icons/），与版块、侧边栏用同一套：砖墙、齿轮、蛋糕、指南针。
 # 都不开「可多次授予」：同一件事做十次也只该有一枚。
 def club_badges
   [

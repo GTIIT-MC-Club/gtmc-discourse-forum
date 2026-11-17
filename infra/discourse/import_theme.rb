@@ -21,8 +21,14 @@ THEME_NAME = "GTMC"
 LIGHT_COLOR_SCHEME_NAME = "GTMC Light"
 DARK_COLOR_SCHEME_NAME = "GTMC Dark"
 
-# 只给仓库读者看、不属于主题本身的内容：字体的许可和字符表、说明文档
-THEME_DIRECTORY_ENTRIES_NOT_PACKED = %w[fonts README.md]
+# 不原样打包的内容：字体的许可和字符表、说明文档只给仓库读者看；icons/ 由 build_icon_sprite 拼成精灵再打包
+THEME_DIRECTORY_ENTRIES_NOT_PACKED = %w[fonts icons README.md]
+# Discourse 每个主题只认一个图标精灵（lib/svg_sprite.rb 的 icons-sprite），而图标在仓库里一个文件一个，
+# 方便单独画、单独改。所以打包时把 icons/*.svg 拼成这一个文件，路径与 about.json 的 icons-sprite 一致。
+ICON_SPRITE_ARCHIVE_PATH = "assets/gtmc-icons.svg"
+ICON_NAME_PATTERN = /\Agtmc-[a-z0-9-]+\z/
+# 导出工具可能写死颜色；一律换成 currentColor，图标才能跟着版块颜色和深浅配色变色
+ICON_COLOR_ATTRIBUTES = %w[fill stroke]
 # 压缩包文件名只用于核心判断格式，必须以 .zip 结尾
 THEME_ARCHIVE_FILENAME = "gtmc-theme.zip"
 
@@ -47,6 +53,36 @@ def packable_files(theme_directory)
     .sort
 end
 
+# 每个图标文件是一个独立的 SVG（任何绘图工具导出的都行），文件名就是图标名。
+# 取根元素的 viewBox 和全部子元素，包成 <symbol id="图标名">；颜色统一成 currentColor。
+def build_icon_sprite(icons_directory)
+  icon_paths = Dir.glob(File.join(icons_directory, "*.svg")).sort
+  abort "no icons found in #{icons_directory}" if icon_paths.empty?
+
+  symbols = icon_paths.map { |icon_path| icon_symbol(icon_path) }
+  puts "built icon sprite from #{icon_paths.size} icons"
+  %(<svg xmlns="http://www.w3.org/2000/svg">\n#{symbols.join("\n")}\n</svg>\n)
+end
+
+def icon_symbol(icon_path)
+  icon_name = File.basename(icon_path, ".svg")
+  unless icon_name.match?(ICON_NAME_PATTERN)
+    abort "icon file #{icon_path}: the name must start with gtmc- and use lowercase letters, digits and -"
+  end
+
+  svg = Nokogiri.XML(File.read(icon_path)).root
+  abort "icon file #{icon_path} is not an SVG" if svg.nil? || svg.name != "svg"
+  view_box = svg["viewBox"] || abort("icon file #{icon_path} has no viewBox")
+
+  svg.traverse do |node|
+    next unless node.element?
+    ICON_COLOR_ATTRIBUTES.each do |attribute|
+      node[attribute] = "currentColor" if node[attribute] && node[attribute] != "none"
+    end
+  end
+  %(<symbol id="#{icon_name}" viewBox="#{view_box}">#{svg.children.map(&:to_xml).join.strip}</symbol>)
+end
+
 # about.json 放在压缩包顶层：核心导入时只在「解压后只有一个顶层文件夹」时才会剥掉外层目录，
 # 顶层就是主题根时不用依赖这个行为。
 def build_theme_archive(theme_directory, archive_path)
@@ -55,8 +91,11 @@ def build_theme_archive(theme_directory, archive_path)
     files.each do |relative_path|
       archive.add(relative_path, File.join(theme_directory, relative_path))
     end
+    archive.get_output_stream(ICON_SPRITE_ARCHIVE_PATH) do |stream|
+      stream.write(build_icon_sprite(File.join(theme_directory, "icons")))
+    end
   end
-  puts "packed #{files.size} files from #{theme_directory}"
+  puts "packed #{files.size} files and the icon sprite from #{theme_directory}"
 end
 
 # 传 theme_id 才会更新已有主题；不传则核心每次都新建一个主题
