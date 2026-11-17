@@ -311,6 +311,23 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 三种状态都要有设计：在线、离线、接口请求失败。
 - **验收**：停掉 MC 服，120 秒内组件变为离线（离线判定超时 90 秒 + 组件刷新间隔 30 秒）；断网时显示「状态暂不可用」而不是空白或报错。
 
+### T3 侧边栏、图标、页头与页脚
+
+范围：`theme`、`infra`、`docs`。在 T1、T2 的主题上补四件事，之后的版块、侧边栏改动都改脚本，不在后台手点。
+
+- **侧边栏（`infra/discourse/sidebar.rb`，可重复执行）**：8 个版块按「公告、活动、建筑展示、红石与技术、模组与资源、白名单与申诉、水吧、老玩家俱乐部」排序并设为默认侧边栏版块；
+  删除核心自带的 General、Site Feedback；「社区」区放最新话题、新人指南、徽章、用户（管理人员另有审核、管理）；`site_settings.rb` 里关闭 `chat_enabled`（聊天走 Discord）。
+- **图标**：`theme/icons/` 里 16×16 的文本网格由 `build_sprite.rb` 生成 `theme/assets/gtmc-icons.svg`（单色 `currentColor`、`crispEdges`），
+  版块设为图标样式。全部原创，不描摹 Mojang 素材（第 0 节非目标）。
+- **页头**：左上角的侧边栏开关在侧边栏展开、收起时位置不变（核心只在侧边栏展开时加宽共用的 `.wrap`，居中的页头随之平移；`desktop.scss` 把页头宽度固定）。
+- **页脚**：Glimmer 组件挂在 `below-footer` 出口。社团名和简介；链接：新人指南、白名单与申诉、关于、Discord 邀请
+  （Discord 链接是主题设置 `discord_invite_url`，留空不显示；前两个站内链接由 `sidebar.rb` 写入主题设置）；
+  声明「Minecraft 是 Mojang Synergies AB 的商标；本站为广东以色列理工学院学生社团自办，与 Mojang、Microsoft 无关」。
+  文字走主题 locales（中英文），样式只用 CSS 变量，类名以 `gtmc-` 开头。
+- **验收**：`sidebar.rb` 连跑两次，第二次只打印「up to date」；导入主题后 `theme_fields` 无编译错误，主题的浅色、深色配色没被覆盖；
+  桌面 1440 宽首页在侧边栏展开和收起时开关的横坐标相同；页脚在桌面（侧边栏展开、收起）和 390 宽手机上都不溢出、不遮挡；
+  页脚链接在 `discord_invite_url` 为空时少一项。
+
 ### C1 内容与社区机制
 
 - 版块已由 `site_settings.rb` 创建。为每个版块写发帖模板（如白名单申请、建筑展示、活动报名），追加进该脚本。

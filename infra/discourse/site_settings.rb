@@ -22,6 +22,10 @@ SETTINGS = {
   min_first_post_length: 6,
   search_tokenize_chinese: true,
 
+  # 关掉核心自带的聊天（侧边栏随之没有「频道」区）。聊天统一走 Discord，MC 服和论坛的消息也汇到那里（PLAN 4.3）；
+  # 再开一处站内聊天，消息会分散在两个地方。
+  chat_enabled: false,
+
   # 字体用系统字体栈（core 的 System 项，key 为 system）。
   # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
   # 清掉核心默认的 Discourse Logo 图片：有 Logo 图时页头显示图片，主题的像素字体站点标题就不会出现。
