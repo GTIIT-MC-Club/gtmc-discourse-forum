@@ -145,7 +145,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 | 方法 路径 | 调用方 | 期 | 请求 | 响应 |
 |---|---|---|---|---|
 | `GET /gtmc/status.json` | 任何人 | 一 | — | `{servers: [{server_id, name, address, map_url, online, version, players_online, players_max, player_names[], tps, updated_at}]}`，顺序与 `gtmc_servers` 一致；某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null` |
-| `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}` |
+| `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}`；缺 `server_id` 或它不是字符串属于请求本身有问题，返回 400 |
 | `GET /gtmc/account.json` | 用户 | 二 | — | `{mc_name}`（未绑定为 `null`），`{renamable_at}` |
 | `PUT /gtmc/account.json` | 用户 | 二 | `{mc_name}` | 成功同上；不合法或被占用返回 422 和可读的中文原因 |
 | `DELETE /gtmc/account.json` | 用户 | 二 | — | 204 |
@@ -180,7 +180,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 `gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`。
 
 `gtmc_servers` 登记所有服，每项四个字段：`server_id`、`name`（展示名，如「生存服」）、`address`（玩家连接用的地址，展示用）、
-`map_url`（可空，空则不显示地图入口）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
+`map_url`（可空，空则不显示地图入口；`status.json` 里空的 `map_url` 返回 `null`）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
 当前版本不支持就用 `type: list`，每项写成 `server_id|name|address|map_url`。实现前查 Discourse 源码确认，
 并在插件 README 里写明管理员怎么填。原来的 `gtmc_server_address`、`gtmc_map_url` 两个设置删掉。
 
