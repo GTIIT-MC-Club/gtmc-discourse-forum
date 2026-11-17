@@ -225,6 +225,15 @@ class HeartbeatClientTest {
   }
 
   @Test
+  void doesNotWarnAboutARequestThatWasCutShortByClosing() {
+    client.close();
+
+    client.send(PAYLOAD);
+
+    assertTrue(loggedRecords.isEmpty());
+  }
+
+  @Test
   void logsOneWarningWhenTheForumIsUnreachableAndDoesNotThrow() {
     forum.stop(0);
 

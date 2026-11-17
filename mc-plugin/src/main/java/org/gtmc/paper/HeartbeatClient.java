@@ -41,6 +41,9 @@ final class HeartbeatClient {
   /** 最近一次失败的原因；为 null 表示最近一次心跳成功（或还没发过）。 */
   private final AtomicReference<String> lastFailureReason = new AtomicReference<>();
 
+  /** 主线程在 onDisable 里置位，异步线程读取；用来区分「服务器在关闭」和「论坛出问题」。 */
+  private volatile boolean closed;
+
   /**
    * 允许 java.net.http 手动设置 Host 头。JDK 默认把 Host 列为受限头，直连回环时又必须带上， Discourse 才认得这是哪个站点。
    *
@@ -101,6 +104,10 @@ final class HeartbeatClient {
         recordFailure(problem);
       }
     } catch (IOException e) {
+      if (closed) {
+        // close() 打断了还在进行的请求，这不是论坛的错，不该留下一条警告。
+        return;
+      }
       String detail = e.getMessage() == null ? "" : ": " + e.getMessage();
       recordFailure("request failed (" + e.getClass().getSimpleName() + detail + ")");
     } catch (InterruptedException e) {
@@ -111,6 +118,7 @@ final class HeartbeatClient {
 
   /** 立刻放弃还在进行的请求。服务器关闭时调用。 */
   void close() {
+    closed = true;
     httpClient.shutdownNow();
   }
 
