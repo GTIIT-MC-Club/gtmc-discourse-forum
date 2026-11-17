@@ -1,1 +1,3 @@
-rootProject.name = "gtmc-paper"
+rootProject.name = "gtmc-mc-plugin"
+
+include("common", "paper")

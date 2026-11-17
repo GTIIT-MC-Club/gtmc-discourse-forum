@@ -1,4 +1,4 @@
-package org.gtmc.paper;
+package org.gtmc.common;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -9,6 +9,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
@@ -19,12 +24,12 @@ import java.util.logging.Logger;
  *
  * <p>线程约定：{@link #send} 会阻塞到响应或超时，只能在异步线程调用。失败状态只被异步线程访问， 用 AtomicReference 保证不同异步线程之间的可见性。
  */
-final class HeartbeatClient {
+public final class HeartbeatClient {
 
   /** 连接超时与请求超时之和（8 秒）必须小于最小心跳间隔（10 秒），这样上一次心跳一定在下一次开始前结束， 不会堆积请求。 */
-  static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+  public static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
 
-  static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
+  public static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
   private static final String HEARTBEAT_PATH = "/gtmc/server/heartbeat.json";
 
@@ -33,33 +38,47 @@ final class HeartbeatClient {
 
   private static final int HTTP_OK = 200;
 
+  /** PLAN.md 4.1 心跳响应里 status 的取值。 */
+  private static final String STATUS_OK = "ok";
+
+  private static final String STATUS_UNKNOWN_SERVER = "unknown_server";
+
   private final HttpClient httpClient;
   private final HttpRequest.Builder requestTemplate;
   private final Logger logger;
+  private final String serverId;
   private final int heartbeatIntervalSeconds;
 
   /** 最近一次失败的原因；为 null 表示最近一次心跳成功（或还没发过）。 */
   private final AtomicReference<String> lastFailureReason = new AtomicReference<>();
 
-  /** 主线程在 onDisable 里置位，异步线程读取；用来区分「服务器在关闭」和「论坛出问题」。 */
+  /**
+   * 还在进行的请求。{@link #close} 靠取消它们来打断阻塞中的 {@link #send}：HttpClient.shutdownNow 是 Java 21 才有的 API，而
+   * common 要兼容 Java 17。
+   */
+  private final Set<CompletableFuture<HttpResponse<String>>> inFlightRequests =
+      ConcurrentHashMap.newKeySet();
+
+  /** 平台在关闭插件时（如 Paper 的 onDisable）置位，异步线程读取；用来区分「服务器在关闭」和「论坛出问题」。 */
   private volatile boolean closed;
 
   /**
    * 允许 java.net.http 手动设置 Host 头。JDK 默认把 Host 列为受限头，直连回环时又必须带上， Discourse 才认得这是哪个站点。
    *
-   * <p>这个系统属性只在 java.net.http 第一次被使用时读取，所以必须在 onLoad 里尽早调用。 如果服务器上别的插件抢先用过
+   * <p>这个系统属性只在 java.net.http 第一次被使用时读取，所以必须在插件加载的最早阶段调用（Paper 里是 onLoad）。 如果服务器上别的插件抢先用过
    * java.net.http，这里设置就不生效，构造 {@link HeartbeatClient} 时会失败并提示改用 JVM 启动参数
    * -Djdk.httpclient.allowRestrictedHeaders=host。
    */
-  static void allowHostHeaderOverride() {
+  public static void allowHostHeaderOverride() {
     System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host");
   }
 
   /**
    * @throws IllegalStateException Host 头被 JDK 拒绝，说明 {@link #allowHostHeaderOverride} 来得太晚
    */
-  HeartbeatClient(PluginSettings settings, Logger logger) {
+  public HeartbeatClient(PluginSettings settings, Logger logger) {
     this.logger = logger;
+    this.serverId = settings.serverId();
     this.heartbeatIntervalSeconds = settings.heartbeatIntervalSeconds();
     // 强制 HTTP/1.1：默认会在 http:// 上发 h2c 升级请求，对 Discourse 的 nginx 没有好处。
     this.httpClient =
@@ -80,7 +99,6 @@ final class HeartbeatClient {
               // 直连回环走的是明文，这里声明 TLS 已在上游终结，和 Caddy 转发过来的请求保持一致。
               .header("X-Forwarded-Proto", "https");
     } catch (IllegalArgumentException e) {
-      httpClient.shutdownNow();
       throw new IllegalStateException(
           "The JDK refused the Host header ("
               + e.getMessage()
@@ -91,35 +109,44 @@ final class HeartbeatClient {
   }
 
   /** 阻塞发送一次心跳，结果只体现在日志里。只能在异步线程调用。 */
-  void send(HeartbeatPayload payload) {
+  public void send(HeartbeatPayload payload) {
     HttpRequest request =
         requestTemplate.copy().POST(HttpRequest.BodyPublishers.ofString(payload.toJson())).build();
+    CompletableFuture<HttpResponse<String>> inFlight =
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+    inFlightRequests.add(inFlight);
+    if (closed) {
+      // close() 恰好在登记之前跑完，它取消不到这个请求，只能自己取消。
+      inFlight.cancel(true);
+    }
     try {
-      HttpResponse<String> response =
-          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-      String problem = describeProblem(response);
+      String problem = describeProblem(inFlight.get());
       if (problem == null) {
         recordSuccess();
       } else {
         recordFailure(problem);
       }
-    } catch (IOException e) {
-      if (closed) {
-        // close() 打断了还在进行的请求，这不是论坛的错，不该留下一条警告。
-        return;
+    } catch (ExecutionException e) {
+      if (!(e.getCause() instanceof IOException failure)) {
+        throw new IllegalStateException("Unexpected failure sending the heartbeat", e.getCause());
       }
-      String detail = e.getMessage() == null ? "" : ": " + e.getMessage();
-      recordFailure("request failed (" + e.getClass().getSimpleName() + detail + ")");
+      String detail = failure.getMessage() == null ? "" : ": " + failure.getMessage();
+      recordFailure("request failed (" + failure.getClass().getSimpleName() + detail + ")");
+    } catch (CancellationException e) {
+      // close() 取消了还在进行的请求，这不是论坛的错，不该留下一条警告。
     } catch (InterruptedException e) {
       // 服务器正在关闭，请求被打断，不算论坛的错。
+      inFlight.cancel(true);
       Thread.currentThread().interrupt();
+    } finally {
+      inFlightRequests.remove(inFlight);
     }
   }
 
   /** 立刻放弃还在进行的请求。服务器关闭时调用。 */
-  void close() {
+  public void close() {
     closed = true;
-    httpClient.shutdownNow();
+    inFlightRequests.forEach(inFlight -> inFlight.cancel(true));
   }
 
   private static URI heartbeatUri(URI forumUrl) {
@@ -129,14 +156,22 @@ final class HeartbeatClient {
   }
 
   /** 返回失败原因，成功返回 null。论坛的业务结论是 HTTP 200 加 status 枚举（PLAN.md 4.1）。 */
-  private static String describeProblem(HttpResponse<String> response) {
+  private String describeProblem(HttpResponse<String> response) {
     if (response.statusCode() != HTTP_OK) {
       return "forum answered HTTP " + response.statusCode() + hintFor(response.statusCode());
     }
     try {
       JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
-      boolean accepted = body.has("status") && "ok".equals(body.get("status").getAsString());
-      return accepted ? null : "forum answered HTTP 200 but status was not ok";
+      String status = body.has("status") ? body.get("status").getAsString() : "";
+      return switch (status) {
+        case STATUS_OK -> null;
+        case STATUS_UNKNOWN_SERVER ->
+            "the forum does not know server_id '"
+                + serverId
+                + "'. Register it in the forum admin: add this server to the gtmc_servers site"
+                + " setting (Admin > Settings > gtmc_servers) with exactly this server_id";
+        default -> "forum answered HTTP 200 but status was not ok";
+      };
     } catch (JsonParseException | IllegalStateException | UnsupportedOperationException e) {
       return "forum answered HTTP 200 but the body was not the expected JSON";
     }

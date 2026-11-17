@@ -1,4 +1,4 @@
-package org.gtmc.paper;
+package org.gtmc.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -29,7 +31,7 @@ class HeartbeatClientTest {
   private static final String API_KEY = "secret-key-that-must-not-be-logged";
   private static final String FORUM_HOST = "forum.example.test";
   private static final HeartbeatPayload PAYLOAD =
-      new HeartbeatPayload("1.21.11", 1, 20, List.of("Steve"), 20.0);
+      new HeartbeatPayload("survival", "1.21.11", 1, 20, List.of("Steve"), 20.0);
 
   /** 假论坛收到的一次请求。 */
   private record ReceivedRequest(
@@ -45,6 +47,11 @@ class HeartbeatClientTest {
   private final List<LogRecord> loggedRecords = new CopyOnWriteArrayList<>();
   private volatile int forumStatusCode = 200;
   private volatile String forumResponseBody = "{\"status\":\"ok\"}";
+  private final CountDownLatch requestReceived = new CountDownLatch(1);
+
+  /** 非 null 时，假论坛收到请求后先等它放行再回应，用来模拟论坛卡住。 */
+  private volatile CountDownLatch holdResponseUntil;
+
   private HttpServer forum;
   private HeartbeatClient client;
 
@@ -69,6 +76,15 @@ class HeartbeatClientTest {
                   exchange.getRequestHeaders().getFirst("Api-Username"),
                   exchange.getRequestHeaders().getFirst("X-Forwarded-Proto"),
                   new String(requestBody, StandardCharsets.UTF_8)));
+          requestReceived.countDown();
+          CountDownLatch hold = holdResponseUntil;
+          if (hold != null) {
+            try {
+              hold.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
           byte[] responseBody = forumResponseBody.getBytes(StandardCharsets.UTF_8);
           exchange.sendResponseHeaders(forumStatusCode, responseBody.length);
           exchange.getResponseBody().write(responseBody);
@@ -101,7 +117,7 @@ class HeartbeatClientTest {
           public void close() {}
         });
     return new HeartbeatClient(
-        new PluginSettings(URI.create(forumUrl), FORUM_HOST, API_KEY, 30), logger);
+        new PluginSettings(URI.create(forumUrl), FORUM_HOST, API_KEY, "survival", 30), logger);
   }
 
   private List<String> loggedMessages(Level level) {
@@ -204,6 +220,30 @@ class HeartbeatClientTest {
   }
 
   @Test
+  void warnsOnceThatTheServerIdMustBeRegisteredWhenTheForumDoesNotKnowIt() {
+    forumResponseBody = "{\"status\":\"unknown_server\"}";
+
+    client.send(PAYLOAD);
+    client.send(PAYLOAD);
+
+    List<String> warnings = loggedMessages(Level.WARNING);
+    assertEquals(1, warnings.size());
+    assertTrue(warnings.get(0).contains("'survival'"), warnings.get(0));
+    assertTrue(warnings.get(0).contains("gtmc_servers"), warnings.get(0));
+  }
+
+  @Test
+  void logsRecoveryOnceTheServerIdHasBeenRegistered() {
+    forumResponseBody = "{\"status\":\"unknown_server\"}";
+    client.send(PAYLOAD);
+    forumResponseBody = "{\"status\":\"ok\"}";
+    client.send(PAYLOAD);
+
+    assertEquals(1, loggedMessages(Level.WARNING).size());
+    assertEquals(1, loggedMessages(Level.INFO).size());
+  }
+
+  @Test
   void treatsAnHttp200ThatIsNotJsonAsAFailure() {
     forumResponseBody = "<html>maintenance</html>";
 
@@ -231,6 +271,26 @@ class HeartbeatClientTest {
     client.send(PAYLOAD);
 
     assertTrue(loggedRecords.isEmpty());
+  }
+
+  @Test
+  void closingAbortsARequestThatIsStillWaitingForTheForumWithoutWarning() throws Exception {
+    CountDownLatch releaseForum = new CountDownLatch(1);
+    holdResponseUntil = releaseForum;
+    Thread sender = new Thread(() -> client.send(PAYLOAD));
+    try {
+      sender.start();
+      assertTrue(requestReceived.await(5, TimeUnit.SECONDS), "the request never reached the forum");
+
+      client.close();
+
+      // 远小于 REQUEST_TIMEOUT：send 是被 close 打断的，而不是等到超时。
+      sender.join(2000);
+      assertFalse(sender.isAlive(), "send() was still blocked after close()");
+      assertTrue(loggedRecords.isEmpty());
+    } finally {
+      releaseForum.countDown();
+    }
   }
 
   @Test
