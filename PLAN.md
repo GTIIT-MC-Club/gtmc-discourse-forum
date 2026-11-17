@@ -15,7 +15,7 @@
 | 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案 |
 | 注册 | 仅 `@gtiit.edu.cn` 邮箱；游客可只读公开版块 |
 | 规模 | 约 200 人 |
-| MC 服务器 | Paper/Purpur 1.21.x，纯离线模式，目前没有任何登录插件；与论坛在同一台机器（若改用 PVE 则分属两台虚拟机，见下文） |
+| MC 服务器 | **4 个互相独立的服**（各有地址，无群组代理），全部接入论坛；纯离线模式，没有任何登录插件。其中有 Paper/Purpur，也有 Fabric/Forge 系的模组服，各服的核心和版本待负责人确认（任务 H2）。与论坛在同一台机器（若改用 PVE 则分属不同虚拟机，见下文） |
 | 聊天平台 | Discord |
 | 节奏 | 2 周出 MVP（第一期），之后两期迭代 |
 | 域名 / VPS / 邮件服务 | 都还没有，需要负责人购买（见任务 H1） |
@@ -37,7 +37,8 @@
 - 第三方应用自助注册 OAuth 客户端（Linux.do Connect 有）。v1 的客户端由管理员写配置文件。
 - 积分兑换服内奖励。v1 只做积分和排行榜。
 - 皮肤头像。离线服拿不到可信的皮肤来源，改为在用户卡片上显示 MC 游戏名。
-- QQ 群互通、Folia 支持、多子服（群组服）支持。
+- QQ 群互通、Folia 支持、Velocity/BungeeCord 群组代理（现在的 4 个服是各自独立的，按独立服支持）。
+- 跨服聊天：一个 MC 服里的聊天不转发到其他 MC 服，只转发到 Discord 和论坛（见 4.3）。
 
 ---
 
@@ -50,12 +51,12 @@
   非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、12G 内存、80G 磁盘。
 - **frpc 装在论坛虚拟机里**，这样「frpc → `127.0.0.1:8880` → 容器」这一段和现在完全一样，`app.yml`、
   `frpc.toml`、Caddy 都不用改。
-- **MC 服放另一台虚拟机或 LXC**（Paper 不需要 Docker，LXC 即可），内存按 8–16G 给。
+- **MC 服放其他虚拟机或 LXC**（不需要 Docker，LXC 即可），4 个服可以各一台也可以合并，按各服负载分配内存。
   MC 插件不能再走本机回环：`forum_url` 改成论坛虚拟机的内网地址，`app.yml` 的 `expose` 额外绑定内网 IP
   （如 `10.0.0.10:8880:80`），`Host` 和 `X-Forwarded-Proto` 两个头照旧带。
 - **内网端口只放行 MC 那台机器。** 容器里的 nginx 信任 docker 网桥地址发来的 `X-Forwarded-For`
   （见 `app.yml`），而经端口映射进来的请求来源都是网桥地址，谁能连上这个端口谁就能伪造真实 IP。
-  用 PVE 防火墙把论坛虚拟机的 8880 限定为只接受 MC 机器的地址。
+  用 PVE 防火墙把论坛虚拟机的 8880 限定为只接受各 MC 机器的地址。
 - **备份**：Discourse 自带的每日备份照旧（它可以单独恢复到任何机器）；另外用 PVE 的 vzdump 每周整机备份
   论坛虚拟机和 MC 机器，存到另一块盘。两者不互相替代。
 - **代理**：I2 里给 Docker 和构建容器配的 VPS 代理，改在论坛虚拟机内配置，PVE 宿主机本身不需要。
@@ -100,7 +101,11 @@ infra/
   README.md                   部署手册，待写（I1–I3 边做边写）
 theme/                        Discourse 主题（第一期）
 plugins/discourse-gtmc/       Discourse 插件，Ruby + Ember（第一期起）
-mc-plugin/                    Paper 插件 gtmc-paper，Java 21（第一期起）
+mc-plugin/                    MC 端接入，Gradle 多项目（第一期起）
+  common/                     与平台无关的逻辑：论坛 API 客户端、心跳、进服判定、冻结状态机。
+                              只依赖 JDK 和 Gson，编译目标 Java 17（Fabric/Forge 的 1.20.x 服跑在 Java 17 上）
+  paper/                      Paper/Purpur 插件 gtmc-paper，Java 21，薄适配层
+  fabric/ neoforge/ …         模组端适配层，等 H2 确认各服核心和版本后再建（任务 F1）
 bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 ```
 
@@ -130,14 +135,17 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
   （请求头 `Api-Key` + `Api-Username: system`）。插件用 `add_api_key_scope` 注册一个 `gtmc:server` 作用域，
   发给 MC 插件的 Key 只勾这个作用域。
   请求体一律 JSON（`Content-Type: application/json`），数值字段必须是 JSON 数字而不是字符串，否则 400。
+- **多服**：每个 MC 服有一个 `server_id`（`^[a-z0-9-]{1,32}$`，如 `survival`），写在该服的插件配置里。
+  论坛只认站点设置 `gtmc_servers` 里登记过的 `server_id`，没登记的请求一律返回 `{status: "unknown_server"}`。
+  4 个服共用一个 `gtmc:server` Key 即可：Key 只证明「这是我们的服」，`server_id` 只用于区分是哪个服，不用于授权。
 
 服务器接口的业务结论一律用 **HTTP 200 + `status` 枚举**表达，4xx/5xx 只表示请求本身有问题。
 这样调用方能把「论坛说不行」和「论坛挂了」分开处理。
 
 | 方法 路径 | 调用方 | 期 | 请求 | 响应 |
 |---|---|---|---|---|
-| `GET /gtmc/status.json` | 任何人 | 一 | — | `{online, version, players_online, players_max, player_names[], tps, updated_at}`；超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则 `online: false`，其余字段为 `null` |
-| `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` |
+| `GET /gtmc/status.json` | 任何人 | 一 | — | `{servers: [{server_id, name, address, map_url, online, version, players_online, players_max, player_names[], tps, updated_at}]}`，顺序与 `gtmc_servers` 一致；某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null` |
+| `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}` |
 | `GET /gtmc/account.json` | 用户 | 二 | — | `{mc_name}`（未绑定为 `null`），`{renamable_at}` |
 | `PUT /gtmc/account.json` | 用户 | 二 | `{mc_name}` | 成功同上；不合法或被占用返回 422 和可读的中文原因 |
 | `DELETE /gtmc/account.json` | 用户 | 二 | — | 204 |
@@ -164,17 +172,23 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
   比较用常数时间比较。同一 `mc_name` 10 分钟内最多试 5 次。
 - IP 信任：登录码验证成功后，记住 `(user_id, ip)`，有效期 `gtmc_ip_trust_hours`（默认 12，设 0 关闭）。
   存 Redis，丢了只是让玩家重新输一次码。**校园网多人共用出口 IP，这个时长不要调大。**
-- 服务器状态：最近一次心跳存 Redis。
+- 服务器状态：每个服最近一次心跳各存一个 Redis 键（键名含 `server_id`）。
+- 绑定、登录码、IP 信任都是**全站共享**的：一个游戏名绑定一次，4 个服通用；在任一服输过登录码后，
+  同一 IP 在信任期内进任何一个服都免码。
 
 站点设置（都以 `gtmc_` 开头）：`gtmc_enabled`、`gtmc_ip_trust_hours`、`gtmc_login_code_ttl_seconds`、
-`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_server_address`（展示用）、
-`gtmc_map_url`（空则不显示地图入口）。
+`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`。
+
+`gtmc_servers` 登记所有服，每项四个字段：`server_id`、`name`（展示名，如「生存服」）、`address`（玩家连接用的地址，展示用）、
+`map_url`（可空，空则不显示地图入口）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
+当前版本不支持就用 `type: list`，每项写成 `server_id|name|address|map_url`。实现前查 Discourse 源码确认，
+并在插件 README 里写明管理员怎么填。原来的 `gtmc_server_address`、`gtmc_map_url` 两个设置删掉。
 
 ### 4.2 玩家进服流程（第二期的核心）
 
 ```
 玩家连接
-  └ AsyncPlayerPreLoginEvent：查 /gtmc/server/players/<名字>?ip=<IP>
+  └ 登录前事件（Paper 是 AsyncPlayerPreLoginEvent，模组端用各自加载器的对应事件）：查 /gtmc/server/players/<名字>?ip=<IP>
        ├ unbound / case_mismatch / suspended → 踢出并说明
        ├ 论坛不可达 → 该玩家在本地缓存里且上次是 allowed 则放行（按未信任处理），否则踢出
        └ allowed
@@ -189,7 +203,8 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 冻结状态下：不能移动、聊天、破坏、放置、交互、受伤、捡拾和丢弃物品、打开容器；
 除 `/login` 外的命令全部拦截；聊天栏每 10 秒提示一次怎么获取登录码。
 
-所有 HTTP 调用都不许在主线程上做。
+所有 HTTP 调用都不许在主线程上做。判定和冻结的规则写在 `mc-plugin/common` 里，各平台只负责把事件接进来、把动作执行出去，
+这样 4 个服的行为一致。
 
 ### 4.3 bridge 的接口（第三期）
 
@@ -203,11 +218,13 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 WebSocket 消息（双向，同一格式）：
 
 ```json
-{"type": "chat", "source": "minecraft", "author": "Steve", "text": "有人在线吗"}
+{"type": "chat", "source": "minecraft", "server_id": "survival", "author": "Steve", "text": "有人在线吗"}
 {"type": "announcement", "text": "新帖：周末建筑比赛报名", "url": "https://FORUM_HOST/t/123"}
 ```
 
-`source` 取值 `minecraft` / `discord` / `forum`。bridge 把一条消息转发到除来源外的另外两端。
+`source` 取值 `minecraft` / `discord` / `forum`。`server_id` 只在 `source` 为 `minecraft` 时出现。
+转发规则：MC 服的消息发到 Discord 和论坛（带服名前缀，如 `[生存服] Steve: …`），不发到其他 MC 服；
+Discord 和论坛的消息、以及 `announcement`，广播到所有在线的 MC 服。每个 MC 服各自建一条 WebSocket 连接。
 防回环：各端忽略自己的机器人账号发出的消息。
 
 OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向到论坛的 DiscourseConnect Provider
@@ -300,6 +317,37 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 写置顶帖：欢迎与社区规则、新人指南（怎么升级、各等级能做什么）。
 - 侧边栏分区、徽章（如「初来乍到」「建筑师」「红石工程师」）在后台配置，步骤记进 `infra/README.md`。
 - **验收**：新注册账号能看懂自己该去哪发帖、怎么升到 1 级。
+
+### 多服改造（P1、M1、T2 已按单服做完，这三项把它们改成 4 个服）
+
+接口以 4.1 为准（`server_id`、`gtmc_servers`、`status.json` 的 `servers` 数组）。三项可以并行。
+
+**H2 各服清单（负责人）**：列出 4 个服各自的 `server_id`、展示名、核心（Paper/Purpur/Fabric/Forge/NeoForge）、
+MC 版本、Java 版本、玩家连接地址。F1 等它。
+
+**R1 论坛插件改多服**（改 P1）
+- 新增 `gtmc_servers` 设置，删掉 `gtmc_server_address`、`gtmc_map_url`；心跳按 `server_id` 分键存储，
+  未登记的 `server_id` 返回 `unknown_server`；`status.json` 按 4.1 返回 `servers` 数组。
+- 后台把某个服从 `gtmc_servers` 里删掉后，它不再出现在 `status.json`，旧心跳键不用主动清（读取时只看登记过的）。
+- **验收**：rspec 覆盖两个服分别心跳互不影响、一个超时另一个仍在线、未登记的 `server_id`、`gtmc_servers` 为空时返回空数组，
+  以及 P1 原有的权限用例。
+
+**R2 MC 端拆成多项目**（改 M1）
+- 按第 2 节把 `mc-plugin/` 拆成 `common/` 和 `paper/`。心跳的组包、发送、失败限频挪进 `common/`，
+  `common/` 不许引用任何 Bukkit/Paper 类，编译目标 Java 17；`paper/` 只剩读取服务器状态和调度。
+- 配置加 `server_id`（必填，格式不对就禁用插件并说明），心跳带上它；收到 `unknown_server` 记一行警告并说明要去后台登记。
+- **验收**：`./gradlew build` 通过；`common/` 的单测不依赖 Paper；在真 Paper 服上对假论坛收到带 `server_id` 的心跳。
+
+**R3 状态组件改多服**（改 T2）
+- 首页显示 `servers` 里每个服一张紧凑卡片：服名、在线状态、人数、版本、地址（点一下复制）、地图入口。
+  只有一个服时布局不能显得空；手机宽度下卡片纵向排列。
+- 「状态暂不可用」仍是整体的（接口失败时没有任何服的数据）。
+- **验收**：QUnit 覆盖 0 个、1 个、4 个服，部分在线部分离线，以及接口失败。
+
+**F1 模组端适配**（等 H2）
+- 按 H2 的结果为每种模组加载器建一个 `mc-plugin/<加载器>/` 子项目，复用 `common/`。先做心跳，进服验证随第二期一起做。
+- 冻结在模组端要靠加载器的事件或 Mixin 实现，难度比 Paper 高。每种加载器开工前先写一页调研：
+  哪些冻结行为能用现成事件拦住，哪些必须 Mixin，然后再写代码。
 
 ### 第一期完成标准
 
