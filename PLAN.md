@@ -251,7 +251,8 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 建 `mc-plugin/`：Gradle（Kotlin DSL）、Java 21、`paper-api` 1.21.x、`plugin.yml`。
   HTTP 用 JDK 自带的 `java.net.http`，JSON 用 Paper 自带的 Gson，不加其他运行时依赖。
 - `config.yml`：`forum_url`（默认 `http://127.0.0.1:8880`，同机直连不绕 VPS）、`api_key`、`heartbeat_interval_seconds`（默认 30）。
-  直连回环时要带 `Host: FORUM_HOST` 头，Discourse 才认。
+  直连回环时要带 `Host: FORUM_HOST` 头，Discourse 才认；还要带 `X-Forwarded-Proto: https`，
+  否则 `force_https` 会把回环上的 HTTP 请求 301 到 HTTPS（待 I3 在真机确认）。
 - 定时异步上报心跳；失败只记一行警告，不刷屏、不影响服务器。
 - **验收**：真服上装好后，论坛 `/gtmc/status.json` 的人数随玩家进出变化；论坛停掉时服务器 TPS 不受影响。
 
