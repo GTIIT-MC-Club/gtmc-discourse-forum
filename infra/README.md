@@ -287,6 +287,13 @@ HOME$ getent hosts mirrors.bfsu.edu.cn     # 有输出才算好
 → 克隆 `discourse_docker` 到 `/var/discourse` → 把 `app.internal.yml` 装成
 `/var/discourse/containers/app.yml` → `sudo ./launcher rebuild app`。
 
+**踩过的坑：不要引 `templates/web.china.template.yml`。** 它的 `before_code` 把容器里所有
+`https://github.com/` 改写成 `https://mirror.ghproxy.com/https://github.com/`，而这个代理站从
+这台机器连不上（`curl` 6 秒超时），`git fetch` 于是无限重试，`./launcher rebuild` 永远停在
+「拉代码」那一步，最后报 `bootstrap failed with exit code 128` 或干脆不动。它顺带配的 gem/npm
+镜像也不需要：直连 `rubygems.org` 0.29s、`registry.npmjs.org` 0.12s，而 `mirrors.tuna.tsinghua.edu.cn`
+对这台机器返回 403。
+
 ```
 HOME$ sudo install -o root -g root -m 644 app.internal.yml /var/discourse/containers/app.yml
 HOME$ cd /var/discourse && sudo ./launcher rebuild app

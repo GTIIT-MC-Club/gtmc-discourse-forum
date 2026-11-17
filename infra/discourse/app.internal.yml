@@ -10,8 +10,10 @@ templates:
   - "templates/redis.template.yml"
   - "templates/web.template.yml"
   - "templates/web.ratelimited.template.yml"
-  # 大陆网络：gem 源走国内镜像
-  - "templates/web.china.template.yml"
+  # 不引 templates/web.china.template.yml：它的 before_code 会把容器里所有
+  # https://github.com/ 改写成 https://mirror.ghproxy.com/...，而这个代理站从这台机器
+  # 连不上（curl 6 秒超时），git fetch 会一直重试，rebuild 就永远停在"正在拉代码"。
+  # 它顺带配的 gem/npm 镜像也不需要：实测直连 rubygems.org 0.29s、registry.npmjs.org 0.12s。
 
 # 没有 frpc，内网机器直接连。只绑内网地址，不监听到公网网卡。
 expose:
