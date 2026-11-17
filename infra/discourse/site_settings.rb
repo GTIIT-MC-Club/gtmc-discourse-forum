@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # 站点设置与版块初始化，可重复执行。
 # 用法（在自有机器上）：
 #   docker cp site_settings.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
