@@ -48,7 +48,8 @@
 只影响 I2 的装法和几条网络假设。确定改用 PVE 后，I2 按下面做，并把本节并入第 1 节：
 
 - **论坛放 KVM 虚拟机，不放 LXC。** Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting、
-  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、12G 内存、80G 磁盘。
+  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、8G 内存、80G 磁盘；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
+  `UNICORN_WORKERS` 降到 3。CPU 类型选 `host`，开启 qemu-guest-agent。
 - **frpc 装在论坛虚拟机里**，这样「frpc → `127.0.0.1:8880` → 容器」这一段和现在完全一样，`app.yml`、
   `frpc.toml`、Caddy 都不用改。
 - **MC 服放其他虚拟机或 LXC**（不需要 Docker，LXC 即可），4 个服可以各一台也可以合并，按各服负载分配内存。
