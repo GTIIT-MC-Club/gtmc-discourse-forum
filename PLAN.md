@@ -42,10 +42,12 @@
 
 ---
 
-### 若改用 Proxmox VE（待负责人确认）
+### Proxmox VE（已确定，2026-11-17 装好 PVE 9.2.2）
 
-社团可能在自有机器上装 PVE 取代裸 Debian。代码不用改（MC 插件的 `forum_url` 本来就是配置项），
-只影响 I2 的装法和几条网络假设。确定改用 PVE 后，I2 按下面做，并把本节并入第 1 节：
+自有机器已装 PVE 9.2.2（节点 `gtmc`，内网 192.168.2.108，32 线程、64G 内存、SSD 约 236G，另有 1T 机械盘待加入）。
+代码不用改（MC 插件的 `forum_url` 本来就是配置项），只影响 I2 的装法和几条网络假设。I2 按下面做：
+
+- **存储分工**：SSD 放 PVE 系统、论坛虚拟机和 MC 服的运行盘；1T 机械盘放 vzdump 整机备份、Discourse 每日备份的同步副本、ISO 和 MC 旧存档。
 
 - **论坛放 KVM 虚拟机，不放 LXC。** Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting、
   非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、8G 内存、80G 磁盘；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
