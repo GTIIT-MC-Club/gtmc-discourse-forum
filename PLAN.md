@@ -328,6 +328,24 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
   桌面 1440 宽首页在侧边栏展开和收起时开关的横坐标相同；页脚在桌面（侧边栏展开、收起）和 390 宽手机上都不溢出、不遮挡；
   页脚链接在 `discord_invite_url` 为空时少一项。
 
+### T4b 配色、状态、徽章与引导机器人
+
+范围：`infra`、`docs`。把主题导入、配色、徽章、引导机器人从后台手动操作改成可重复执行的脚本（执行顺序见 `infra/content/admin-setup.md`）。
+
+- **主题导入与配色（`infra/discourse/import_theme.rb`）**：打包 `theme/`、导入（已有就原地更新，不新建）、设为默认主题；
+  浅色配色设为 `GTMC Light`、深色配色设为 `GTMC Dark`（`Theme#color_scheme_id`、`dark_color_scheme_id`），两套配色都允许用户自选。
+- **自定义状态**：`site_settings.rb` 打开 `enable_user_status`。
+- **徽章（`infra/discourse/badges.rb`）**：「社团成就」分组；建筑师、红石工程师、活动常客用每日 SQL 查询自动授予，引路人手工授予；
+  信任等级 1 的核心徽章中文名改为「初来乍到」，另有几个核心徽章改中文名（翻译覆盖，不动徽章本身）。
+  不打开隐藏设置 `enable_badge_sql`（脚本不需要它，打开会给所有管理员写任意 SQL 的入口）。
+- **引导机器人（`infra/discourse/narrative_bot.rb`）**：改名「小火把」（用户名 `gtmc_torch`）、原创像素头像、简介；
+  新用户教程的中文台词（`infra/content/narrative-bot/zh_CN.yml`）改成社团口吻，结尾引导去「白名单与申诉」和「新人指南」；
+  `site_settings.rb` 打开插件默认关闭的欢迎私信（`disable_discourse_narrative_bot_welcome_post` 设为 false）。结业证书图片不改。
+- 顺带：`site_settings.rb` 补 `frozen_string_literal` 注释；`theme/README.md` 去掉「没有测试站」等过时说法。
+- **验收**：五个脚本按顺序连跑两次，第二次没有任何改动（只打印 up to date、或重新导入主题的同样结果）；
+  新注册的账号收到小火把的教程私信；`/badges` 页最前面是「社团成就」分组；用户菜单里有「设置自定义状态」；
+  全新导入主题（没有已存在的 GTMC）后浅色、深色配色与现状一致。
+
 ### C1 内容与社区机制
 
 - 版块已由 `site_settings.rb` 创建。为每个版块写发帖模板（如白名单申请、建筑展示、活动报名），追加进该脚本。
