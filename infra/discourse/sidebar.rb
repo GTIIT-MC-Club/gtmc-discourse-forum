@@ -231,8 +231,12 @@ assert_icons_in_sprite!(theme, CATEGORY_ICONS.map(&:last) + links.map { |link| l
 SEEDED_CATEGORY_SETTINGS_TO_DELETE.each { |setting_name| delete_seeded_category(setting_name) }
 
 # 不开时核心按名字字母序排版块，上面写的顺序不起作用
-SiteSetting.set(:fixed_category_positions, true)
-puts "set fixed_category_positions = true"
+if SiteSetting.fixed_category_positions
+  puts "fixed_category_positions is up to date"
+else
+  SiteSetting.set(:fixed_category_positions, true)
+  puts "set fixed_category_positions = true"
+end
 
 apply_category_order(gtmc_categories)
 apply_default_sidebar_categories(gtmc_categories)
