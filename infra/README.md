@@ -3,7 +3,8 @@
 本文件是 `infra/` 下各配置文件的部署步骤，对应 `PLAN.md` 第 5 节的 I1、I2、I3。
 写代码的规范见 `AGENTS.md`，这里只管「在哪台机器上按什么顺序敲什么命令」。
 
-**截至提交时这些步骤还没有在真机上完整执行过**（域名和 VPS 都还没买，见 PLAN 的 H1）。
+**截至 2026-11-18，只有 I2.0（无 VPS 的内网装法）在真机上执行过**（论坛虚拟机 `100 gtmc-forum`）；
+I1（VPS）、I2.1~I2.5（代理、frpc）、I3 都还没跑过，因为域名和 VPS 还没买（见 PLAN 的 H1）。
 凡是没跑过的命令和配置项，都在文末「未验证」一节列出，执行时请逐条确认并把结果补回来。
 
 ## 0. 约定
@@ -234,6 +235,65 @@ VPS$ sudo ufw status numbered
 顺序有依赖：先隧道和代理（否则后面什么都拉不下来），再 Docker 和它的代理，再 frpc，最后 rebuild。
 下面每一步都写了该步自己的验收命令，不要跳步——I2 失败最常见的原因是某一步的代理没生效，
 到 `./launcher rebuild` 时才暴露，排查成本高得多。
+
+## I2.0 现在的状态：没有 VPS，先只打通内网
+
+截至 2026-11-18，域名和 VPS 都还没买（PLAN 的 H1），所以 I2.1~I2.4 里的隧道、代理、frpc
+全部做不了。这段时间用下面这套「无代理直连 + 国内镜像源」的装法，机器起来后内网可访问，
+外网访问等 VPS 到位再补。配置见 `infra/discourse/app.internal.yml`。
+
+在论坛虚拟机（`100 gtmc-forum`，`192.168.2.111`）上实测过的结果：
+
+| 目标 | 结果 |
+|---|---|
+| `registry-1.docker.io`、`auth.docker.io`、`gcr.io` | 全部超时（被封） |
+| `github.com` 0.5s、`raw.githubusercontent.com` 0.2s | 通，不需要代理 |
+| `get.docker.com` 0.8s、`download.docker.com` 0.1s | 通 |
+| `ghcr.io`、`quay.io` | 通（401，正常鉴权响应） |
+| `docker.m.daocloud.io`、`docker.1ms.run` | 通，能换到 token 并取到 `discourse/base:release` 的 manifest |
+
+所以只需要给 Docker Hub 配镜像源，其他都不配代理：
+
+```
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io", "https://docker.1ms.run"],
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "50m", "max-file": "3" },
+  "live-restore": true
+}
+EOF
+sudo systemctl restart docker
+HOME$ docker info | grep -A3 -i "registry mirrors"
+HOME$ docker pull discourse/base:release      # 验收：约 3GB 能拉完就说明镜像源可用
+```
+
+**踩过的坑：改成静态 IP 后 DNS 会消失。** Debian 13 的 `ifupdown` 用 `dhcpcd` 拿 DHCP，
+`dhcpcd` 会接管 `/etc/resolv.conf`；把网卡从 `inet dhcp` 改成 `inet static` 并
+`systemctl restart networking` 之后，`dhcpcd` 退出前把 `resolv.conf` 重写成只剩一行注释，
+于是 `apt`、NTP、`curl` 全部报「暂时不能解析域名」，但 `ping 223.5.5.5` 是通的。
+静态配置下没人再写这个文件，直接写死即可：
+
+```
+HOME$ sudo tee /etc/resolv.conf >/dev/null <<'EOF'
+nameserver 223.5.5.5
+nameserver 119.29.29.29
+EOF
+HOME$ getent hosts mirrors.bfsu.edu.cn     # 有输出才算好
+```
+
+部署顺序：装 Docker（用 `get.docker.com` 的官方脚本，得到 docker-ce）→ 配上面的镜像源
+→ 克隆 `discourse_docker` 到 `/var/discourse` → 把 `app.internal.yml` 装成
+`/var/discourse/containers/app.yml` → `sudo ./launcher rebuild app`。
+
+```
+HOME$ sudo install -o root -g root -m 644 app.internal.yml /var/discourse/containers/app.yml
+HOME$ cd /var/discourse && sudo ./launcher rebuild app
+```
+
+仓库从 2026-11-18 起是公开的，所以容器里 `hooks.after_code` 的 `git clone` 不需要令牌；
+私有仓库时要换成只读 Deploy Key，不要把 PAT 写进 `app.yml`。
 
 ## I2.1 建立 SSH 隧道到 VPS 的代理
 
@@ -506,7 +566,8 @@ HTTP/2 200
 以下命令和配置项在写这份手册时**没有在真机上执行过**（H1 的域名和 VPS 都还没到位）。
 执行时请逐条验证，并把结论补进对应小节或删掉本行。
 
-- **所有命令**：整份手册没有在任何机器上跑过，包括 apt 包名、`ss` 输出格式、`nmap` 结果形态。
+- **I2.0 之外的步骤**：I2.0 已在论坛虚拟机上验证过；其余（I1、I2.1~I2.5、I3）在任何机器上都没跑过，
+  包括 apt 包名、`ss` 输出格式、`nmap` 结果形态。
 - **`infra/frp/frps.toml` 与 `frpc.toml` 的 TOML 语法**：按 frp 新版（v0.52+）的 TOML 格式写，
   未用 `frps verify` 校验过。装完后跑一次 `sudo frps verify -c /etc/frp/frps.toml`（frpc 同理）确认。
 - **frpc 默认不校验 frps 证书**：`transport.tls.enable = true` 是否在未配 `trustedCaFile` 时跳过对端校验，
@@ -527,7 +588,9 @@ HTTP/2 200
   单元文件可用 `systemd-analyze verify frps.service` 再检查一遍。
 - **`sudo -E` 能否保留代理环境变量**：取决于 sudoers 的 `env_reset`/`SETENV` 设置。
   被拒绝时按 I2.2、I2.5 的备用写法在 root shell 里重新 export。
-- **`get.docker.com` 是否可直连**：脚本本身要经代理下载，`sudo -E` 是否足以让脚本内的 `curl` 走代理未验证。
+- **`get.docker.com` 与 `download.docker.com` 的直连性**：在论坛虚拟机上实测都通（200、0.1~0.8s），
+  所以 I2.0 那条路不需要代理；但机器在大陆不同网段时结论可能不同，上真机前先跑一次
+  `curl -sS -m8 -o /dev/null -w '%{http_code}\n' https://get.docker.com`。
 - **tinyproxy 的 `Allow 127.0.0.1` 语义**：手册按「限制来源 IP」理解。若发现经隧道来的请求被拒，
   对照 `tinyproxy.conf` 的注释调整；无论如何 `Listen 127.0.0.1` 是必须的。
 - **ufw 与 nftables 两套规则**：只选了 ufw 作为主线，nftables 版本未实际加载过

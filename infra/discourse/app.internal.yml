@@ -1,0 +1,49 @@
+# 内网阶段（域名、VPS 都还没有）的 Discourse 容器配置。
+# 放在论坛虚拟机 100（gtmc-forum，192.168.2.111）的 /var/discourse/containers/app.yml，
+# 生效方式：sudo ./launcher rebuild app。
+#
+# 这是临时配置，不是最终形态。域名和 VPS 到位后按 infra/discourse/app.yml 换成正式版，
+# 然后把本文件删掉——两套配置同时存在会让人不知道该改哪份。
+
+templates:
+  - "templates/postgres.template.yml"
+  - "templates/redis.template.yml"
+  - "templates/web.template.yml"
+  - "templates/web.ratelimited.template.yml"
+  # 大陆网络：gem 源走国内镜像
+  - "templates/web.china.template.yml"
+
+# 没有 frpc，内网机器直接连。只绑内网地址，不监听到公网网卡。
+expose:
+  - "192.168.2.111:8880:80"
+
+params:
+  db_default_text_search_config: "pg_catalog.english"
+  # 这台 VM 只有 8G 内存，给数据库约四分之一。64G 的宿主机上才用 4096MB。
+  db_shared_buffers: "2048MB"
+  db_work_mem: "40MB"
+
+env:
+  LC_ALL: en_US.UTF-8
+  LANG: en_US.UTF-8
+  LANGUAGE: en_US.UTF-8
+  DISCOURSE_DEFAULT_LOCALE: zh_CN
+  # 8G 内存配 3 个 worker。扩容到这个 VM 之前不要再加。
+  UNICORN_WORKERS: 3
+
+  # 域名没买，先用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
+  # 不必每人改 hosts。以后换成正式域名只需改这一行再 rebuild。
+  DISCOURSE_HOSTNAME: 192.168.2.111
+  DISCOURSE_DEVELOPER_EMAILS: "CHANGEME@gtiit.edu.cn"
+
+  # 还没有 SMTP 服务。开着邮件会让注册卡在"等确认信"，所以先整个关掉。
+  # PLAN 第 0 节说注册只允许 @gtiit.edu.cn 邮箱，那要等邮件服务到位后连同 SMTP 配置一起开。
+  DISCOURSE_DISABLE_EMAILS: "yes"
+
+volumes:
+  - volume:
+      host: /var/discourse/shared/standalone
+      guest: /shared
+  - volume:
+      host: /var/discourse/shared/standalone/log/var-log
+      guest: /var/log
