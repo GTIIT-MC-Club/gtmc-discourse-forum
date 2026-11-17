@@ -44,13 +44,19 @@
 
 ### Proxmox VE（已确定，2026-11-17 装好 PVE 9.2.2）
 
-自有机器已装 PVE 9.2.2（节点 `gtmc`，内网 192.168.2.108，32 线程、64G 内存、SSD 约 236G，另有 1T 机械盘待加入）。
+自有机器已装 PVE 9.2.2（节点 `gtmc`，内网 192.168.2.108，网关 192.168.2.1，32 线程、64G 内存，传统 BIOS 启动）。
 代码不用改（MC 插件的 `forum_url` 本来就是配置项），只影响 I2 的装法和几条网络假设。I2 按下面做：
 
-- **存储分工**：SSD 放 PVE 系统、论坛虚拟机和 MC 服的运行盘；1T 机械盘放 vzdump 整机备份、Discourse 每日备份的同步副本、ISO 和 MC 旧存档。
+- **存储分工**（2026-11-18 调整完）：
+  - `local-btrfs`：128G 固态（`sdb3`，约 118G 可用），btrfs，数据 single、元数据 DUP。放 PVE 系统、论坛虚拟机和 MC 服的运行盘。
+  - `hdd`：1T 机械盘（`sda3`，约 930G），ext4，挂在 `/mnt/hdd`（fstab 带 `nofail`，PVE 存储设了 `is_mountpoint`）。放 vzdump 整机备份、Discourse 每日备份的同步副本、ISO 和 MC 旧存档。
+  - 安装时两块盘被选成了 btrfs RAID0，已在线拆开（balance 转 single/DUP 后 `btrfs device remove /dev/sda3`）。两块盘的 `sda2`/`sdb2` 引导分区都保留，仍由 `proxmox-boot-tool` 同步。
+  - 固态只有 118G，MC 服的存档放不下时，要么加一块固态，要么把存档放 `hdd`。
+- **内网地址**：论坛虚拟机 `192.168.2.111`（`.110` 已被别的设备占用）。
+- **软件源**：中科大和清华的镜像对这台机器返回 403，改用北外 `mirrors.bfsu.edu.cn`（南大、南科大、华为云也可用）。
 
 - **论坛放 KVM 虚拟机，不放 LXC。** Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting、
-  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、8G 内存、80G 磁盘；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
+  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机给 4 核、8G 内存、50G 磁盘（固态容量有限）；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
   `UNICORN_WORKERS` 降到 3。CPU 类型选 `host`，开启 qemu-guest-agent。
 - **frpc 装在论坛虚拟机里**，这样「frpc → `127.0.0.1:8880` → 容器」这一段和现在完全一样，`app.yml`、
   `frpc.toml`、Caddy 都不用改。
