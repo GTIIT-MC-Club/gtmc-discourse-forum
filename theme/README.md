@@ -1,6 +1,6 @@
 # GTMC 论坛主题
 
-Discourse 主题：浅色、深色两套配色跟随系统，草方块绿强调色，圆角收小、边框硬朗；**只有 Logo 文字用开源像素字体**，其余一律系统字体。
+Discourse 主题：浅色、深色两套配色跟随系统，草方块绿强调色，圆角收小、边框硬朗；**开源像素字体只用于标签、在线人数和日期块**，其余一律系统字体。
 不使用 Mojang 的任何素材，不复刻 Linux.do 的视觉稿。
 
 ## 目录
@@ -8,11 +8,12 @@ Discourse 主题：浅色、深色两套配色跟随系统，草方块绿强调�
 ```
 about.json              主题元数据、两套配色、像素字体的注册
 common/common.scss      手机和桌面共用：字体声明、核心 CSS 变量覆盖、Logo、按钮
-desktop/desktop.scss    仅桌面：侧边栏选中条、页面宽度固定（侧边栏收起时不变窄，开关不动）、侧边栏展开时页脚与正文对齐
+desktop/desktop.scss    仅桌面：页面宽度固定（侧边栏收起时不变窄，开关不动）、侧边栏展开时页脚与正文对齐、右栏的分栏
 （没有 mobile/：手机端目前不需要额外样式，需要时再加 mobile/mobile.scss。
  当前版本的核心不按设备二选一，而是给桌面样式表加 media="(width >= 40rem)"：视口不小于 640px 就加载，
  所以手机竖屏不受 desktop.scss 影响，但横屏的平板会加载它。）
-javascripts/            页脚组件（Glimmer）和挂载它的 api-initializer，见「页脚」
+javascripts/            页脚、右栏、置顶标签、全局提示的组件（Glimmer）和挂载它们的 api-initializer，见「页脚」「右栏」「全局提示」
+test/                   QUnit 测试，随主题上传，见「全局提示 · 测试」
 locales/                主题描述、设置项说明（theme_metadata）和页脚的界面文字（中英文）
 settings.yml            主题设置：Discord 邀请链接和页脚的两个站内链接，见「页脚」
 assets/                 子集化后的像素字体（woff2）
@@ -62,8 +63,8 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
 1. **字体**：基础字体和标题字体用系统字体，已由 `infra/discourse/site_settings.rb` 设置
    （`base_font` / `heading_font` 均为 `system`），不需要手动操作。
    原因：核心默认是 Inter，它不含中文，中文会回落到系统字体但字重和间距不一致。
-2. **Logo**：不要上传 Logo 图片（核心默认的 Logo 图已由 `site_settings.rb` 清掉）。站点没有 Logo 图片时，页头显示站点标题文字（`site_settings.rb` 设的「GTMC 论坛」），
-   这段文字就是用像素字体渲染的。上传了图片则不会走像素字体。
+2. **Logo**：管理员在后台上传 `design/brand/gtmc-logo-3x.png`（步骤见 `infra/content/admin-setup.md`）。
+   主题只给 `#site-logo` 加 `image-rendering: pixelated`，缩放时像素保持方块。小 Logo 还没定稿，暂用核心默认。
 3. **侧边栏与版块图标**：导入主题之后执行 `infra/discourse/sidebar.rb`（它要用主题里的图标，所以排在导入之后），不要在后台手动配。见 `infra/content/admin-setup.md` 的执行顺序一节。
 4. **页脚的 Discord 链接**：外观 → 主题 → GTMC → 设置，把 `discord_invite_url` 填成社团的 Discord 邀请链接；留空则页脚不显示这个链接。
 
@@ -88,6 +89,8 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
   侧边栏宽 + 核心的 `--d-max-width`，**侧边栏收起时也不变窄**：
   收起后正文向左占满侧边栏让出的位置，所以页头左上角的开关、Logo 和正文左边缘始终在同一条线上，开关也不会移动（T3 的验收要求）。
 - **侧边栏**是正文区网格的第一栏，与正文之间隔核心的 `--d-main-content-gap`；它不改变页面级边缘。
+- **右栏**（见「右栏」）的右边缘就是页面级的右边缘：话题列表页它是网格的最后一栏，话题页它是时间线那一栏，两者右边缘重合。
+  右栏出现时话题列表变窄，话题级栏宽不变（话题页的右栏本来就在帖子右侧的空位里）。
 - **话题级**：话题页里的标题、帖子、帖子下的按钮行、「推荐话题」列表共用一个栏宽
   （核心算帖子宽度的同一个公式：头像宽 + 正文宽 + 两倍内边距，约 760px），左边缘就是页面级的左边缘。
   时间线在这一栏右侧，占用余下的宽度。不要为了「填满」去加宽正文：一行超过约 40 个汉字就难读了。
@@ -95,8 +98,13 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
 
 ### 字体与字号
 
-- **像素字体只用于 Logo 文字**（`#site-text-logo`）。话题标题是用户内容，侧边栏、按钮、表单都是界面，一律用系统字体；
-  像素字体和系统字体在同一块区域里混排会像两个产品拼在一起。
+- **像素字体只用于标签、在线人数和日期块**：版块标签、置顶标签、版本号这类短标签，右栏的在线人数，活动的日期块。
+  正文、标题、按钮、提示框一律系统字体（`AGENTS.md`「界面规则」）：长文字用像素字体难读。
+  - 写法：元素加 `gtmc-pixel-text` 类（字体、12px、常规字重、关闭抗锯齿）；大数字再把 `font-size` 换成
+    `--gtmc-pixel-font-size-large`（24px）或 `--gtmc-pixel-font-size-huge`（36px）。字号只取 12px 的整数倍，原因见「像素字体」。
+  - 版块标签是核心渲染的，`common/common.scss` 直接给核心的 `.badge-category__name` 套同样的规则。
+  - 置顶标签由 `gtmc-pinned-label.gjs` 挂在话题列表的 `topic-list-before-status` 出口；核心那个只是标示用的图钉随之隐藏，
+    能点的图钉（可以取消置顶）是控件，保留。
 - 字号只用核心的几档变量，不写 px：
 
   | 层级 | 变量 | 用在 |
@@ -111,7 +119,7 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
 
 ### 交互状态
 
-所有能点的东西用同一套反馈，时长都取 `--gtmc-state-transition-duration`（120ms：快到感觉不到延迟，又能让颜色变化不生硬）。
+所有能点的东西用同一套反馈，时长和曲线取下一节的动效令牌。
 
 | 控件 | 悬停 | 按下 | 键盘焦点 |
 |---|---|---|---|
@@ -120,12 +128,26 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
 | 链接 | 核心的悬停色 | 不另加 | 焦点环 |
 | 侧边栏项、话题列表行 | 底色变 `--d-hover` | 底色变 `--d-selected` | 焦点环（列表行：标题链接得到焦点时环套在整行） |
 
+- **选中态**：荧光笔，即加粗加 `--gtmc-highlighter`（文字下半截一层半透明强调色），套在文字所在的行内元素上。
+  不用左边框竖条，不用整行底色（`AGENTS.md`「界面规则」）。侧边栏当前所在的条目就是这样，图标同时换成强调色。
 - **方块下沿**：实心按钮底部 `--gtmc-block-edge-height` 的深色内阴影，像方块的立体边。只给实心按钮，扁平按钮没有底色，加了会像一道划痕。
 - **焦点环**：`--gtmc-focus-ring-width` 粗的 `--tertiary` 描边，外移 `--gtmc-focus-ring-offset`。核心让大多数控件的键盘焦点和悬停长得一样，
   键盘用户分不清焦点在哪，所以这里统一加环。`--tertiary` 对两套配色的页面底色都超过 3:1（WCAG 非文字对比度）。
   只用 `:focus-visible`，鼠标点击不出环。
 - **减少动态效果**：系统开了「减少动态效果」（`prefers-reduced-motion: reduce`）时过渡时长为 0，按下时不位移。
 - **不可点的东西没有悬停效果**。首页的服务器状态卡片是信息块不是链接，只和全站统一边框和圆角；卡片里的复制按钮和地图链接按上表走。
+
+### 动效
+
+只用三个令牌，定义在 `common/common.scss` 的 `:root`，插件也直接取用（`AGENTS.md`「界面规则」）：
+
+| 令牌 | 值 | 用在 |
+|---|---|---|
+| `--gtmc-duration-state` | 120ms | 悬停、按下、选中、展开这类状态切换；快到感觉不到延迟，又能让颜色变化不生硬 |
+| `--gtmc-tooltip-delay` | 400ms | 提示出现前的停留时间，鼠标扫过不会闪（见「全局提示」） |
+| `--gtmc-ease` | `cubic-bezier(0.2, 0, 0, 1)` | 所有过渡的曲线，先快后慢 |
+
+系统开了「减少动态效果」时 `--gtmc-duration-state` 为 0；提示的延迟不是动画，照旧。
 
 ### 边框与间距
 
@@ -149,8 +171,8 @@ docker cp theme app:/tmp/gtmc-theme && docker cp infra/discourse/import_theme.rb
 
 ### 用在哪里
 
-只用在 Logo 文字（`#site-text-logo`），字号 24px，是 12px 的整数倍，原因见 `common/common.scss`。
-话题标题、侧边栏、按钮、表单都用系统字体，见「视觉规范 · 字体与字号」。要扩大使用范围，先改那一节并说明理由。
+只用在标签、在线人数和日期块，字号只取 12px 的整数倍（12/24/36px），原因见 `common/common.scss`。
+话题标题、侧边栏、按钮、表单、提示框都用系统字体，见「视觉规范 · 字体与字号」。要扩大使用范围，先改那一节并说明理由。
 
 ### 重新生成子集
 
@@ -197,8 +219,12 @@ pyftsubset fusion-pixel-12px-proportional-zh_hans.ttf.woff2 \
 
 - **来源**：全部由本仓库从零绘制，原创，随主题同许可发布。**没有**描摹、取色或参照 Minecraft 原版贴图和图标（PLAN 第 0 节非目标），
   只取告示牌、蛋糕、砖墙这类通用题材。新增图标也必须遵守这一条。
-- **规格**：16×16 网格、整数坐标、单色 `fill="currentColor"`、`shape-rendering="crispEdges"`。
+- **规格**：8×8 网格、整数坐标、单色 `fill="currentColor"`、`shape-rendering="crispEdges"`。
   单色是为了让图标跟着所在位置的文字颜色走：侧边栏和版块徽章里取版块颜色，深浅两套配色下都不用另画。
+- **显示尺寸**：只以 8px 的整数倍显示（16/24/32px），一个网格格子正好对应整数个屏幕像素，边缘才不发虚（`AGENTS.md`「界面规则」）。
+  `common/common.scss` 把所有 `gtmc-` 图标统一定为 `--gtmc-icon-size`（16px），不随所在位置的字号缩放。
+  要更大的图标（如右栏的图标块）用 24px 或 32px，不要用别的值。
+- **设计稿**：`design/brand/icons-8x8/` 是设计阶段的同一套文件。以本目录为准，改图标改这里。
 - **文件**：`icons/gtmc-<英文名>.svg`，普通的独立 SVG，必须有 `viewBox`。打包时颜色会被统一换成 `currentColor`，
   所以画的时候用什么颜色都行，但只能是单色剪影。
 
@@ -223,16 +249,67 @@ pyftsubset fusion-pixel-12px-proportional-zh_hans.ttf.woff2 \
 | `gtmc-door` 门 | 侧边栏「更多」：邀请 |
 | `gtmc-info` 信息牌 | 侧边栏「更多」：关于 |
 | `gtmc-banner` 旗帜 | 侧边栏「更多」：群组 |
+| `gtmc-copy` 两张纸 | 右栏服务器面板：复制地址 |
+| `gtmc-chevron` 向下尖角 | 右栏：展开折叠的条目 |
+| `gtmc-bubble` 对话气泡 | 回复数 |
+| `gtmc-eye` 眼睛 | 浏览数 |
+| `gtmc-heart` 心 | 点赞数 |
 
-版块和侧边栏用哪个图标写在 `infra/discourse/sidebar.rb`，改了上表要同步改那里。
+版块和侧边栏用哪个图标写在 `infra/discourse/sidebar.rb`，改了上表要同步改那里；后五个由插件和主题的组件直接用图标名引用。
 
 ### 新增或修改一个图标
 
-1. 用任何能导出 SVG 的工具在 16×16 画布上画（Inkscape、Figma 都行；像素画工具导出的 SVG 也可以）。
-   轮廓留 1 格边距，线条至少 1 格、细节之间至少隔 1 格，否则 16px 下糊成一团。名字用 `gtmc-` 开头，免得和核心或插件的图标重名。
+1. 用任何能导出 SVG 的工具在 8×8 画布上画（Inkscape、Figma 都行；像素画工具导出的 SVG 也可以），每格一个整数坐标的方块。
+   8×8 只容得下剪影：线条 1 格，细节之间至少隔 1 格，否则 16px 下糊成一团。名字用 `gtmc-` 开头，免得和核心或插件的图标重名。
 2. 存成 `icons/gtmc-<英文名>.svg`（改已有图标就直接覆盖那个文件）。导入脚本会检查文件名和 `viewBox`，不合格就报错退出。
 3. 在上表补一行，提交，然后重新导入主题。
 4. 在浏览器里看 16px 下的效果：深浅两套配色都看一遍。
+
+## 右栏
+
+设计稿 C 是三栏：左侧边栏、中间内容、右栏（`design/mockups/c-server-first.html`、`c-topic.html`）。
+主题只提供右栏的位置、一个插件出口和面板的外观；服务器、新人进服、近期活动这些面板由插件渲染（PLAN T5b）。
+
+- **插件出口 `gtmc-right-rail`**：插件用 `api.renderInOutlet("gtmc-right-rail", 组件)` 把面板放进右栏。
+  出口参数只有 `topic`：话题页是当前话题（核心的 Topic 模型），话题列表页是 `null`。插件按它决定在哪类页面出现。
+- **在哪里出现**：
+  - 话题列表页（路由名以 `discovery.` 开头：首页、版块列表、某个版块的话题列表），视口不窄于 80rem（核心的 `xl` 断点）时。
+    `javascripts/discourse/components/gtmc-right-rail.gjs` 挂在核心的 `after-main-outlet` 出口，成为正文区网格（`#main-outlet-wrapper`）的第三栏，
+    出现时 body 带 `gtmc-has-right-rail` 类，`desktop/desktop.scss` 据此分栏。再窄的话三栏并排时话题列表不到 500px，所以不显示。
+  - 话题页：核心显示时间线时（桌面视图、视口不窄于 925px）。`gtmc-topic-rail.gjs` 挂在核心的 `topic-navigation` 出口，
+    也就是时间线所在的那一栏：帖子那一栏约 760px，再加一条独立的右栏放不下，而时间线那一栏本来就在帖子右边、宽度相当。
+    栏里从上到下是参与者、同版块话题、`gtmc-right-rail` 出口，最后是核心的时间线，当作「阅读进度」面板。
+    时间线放在最下面，是因为只有它需要在滚动时一直留在屏幕上（sticky），上面几块随页面滚走。
+  - 手机宽度不显示右栏，插件在手机上自己换形态（PLAN T5b）。
+- **宽度**：`--gtmc-right-rail-width`（300px），列表页和话题页相同，右边缘都对齐页面级的右边缘。
+- **面板外观**：外层用 `gtmc-rail-panel` 类，标题用 `h3.gtmc-rail-panel-title`（右侧可放一个 `small` 作计数），
+  空状态和失败时的一句话用 `p.gtmc-rail-panel-placeholder`。面板之间的间隔由右栏统一给出，面板自己不加外边距。
+
+## 全局提示
+
+说明性的文字不常驻页面（`AGENTS.md`「界面规则」）：图标、人数、版本号这类元素的说明写在 `data-tooltip` 里，鼠标停留或键盘聚焦时才出现。
+主题和插件的元素都这样写，不用各自包提示组件：
+
+```hbs
+<button class="btn-flat" aria-label={{this.copyLabel}} data-tooltip={{this.copyLabel}}>{{dIcon "gtmc-copy"}}</button>
+```
+
+- **行为**（`javascripts/discourse/lib/gtmc-global-tooltip.js`，移植自负责人的 OpenCard 项目）：
+  默认贴着鼠标并跟随；键盘聚焦时立即出现，锚定在控件上；鼠标第一次停留等 `--gtmc-tooltip-delay`（400ms）再淡入；
+  放不下时翻到对侧（锚定控件时先对侧、再另一轴，贴鼠标时左右、上下各自翻），始终完整留在视口里；点击、Esc、移开即收起。
+  触屏上点按不出提示。
+- **可选属性**（写在元素或祖先上，就近生效）：
+  - `data-tooltip-anchor="target"`：锚定在控件上而不是贴鼠标。
+  - `data-tooltip-placement="top|bottom|left|right"`：锚定时画在哪一侧，默认 `bottom`。水平排列的控件不要用 `left`/`right`，会盖住相邻的控件。
+  - `data-tooltip-group`（写在容器上）：容器里相邻的控件共用「热窗口」，第一次等延迟，之后在组内换控件立即换内容、不再淡入；离开容器就收起。
+  - `data-tooltip-overflow`：只在文字被截断（省略号）时才提示，用于可能放不下的名字。
+- **不要**：有常驻可见文字的控件不再重复同样的提示；只有图标的按钮除了 `data-tooltip` 还要有 `aria-label`，读屏软件不读提示层。
+- **结构**：提示层是 `components/gtmc-tooltip-layer.gjs`（挂在 `below-footer` 出口，全站一个），行为在 `lib/gtmc-global-tooltip.js`。
+  后者是全站唯一直接操作 DOM 的代码（文档级事件监听、按实时几何位置摆放），这是 `AGENTS.md` 的例外条款，别的地方不要再这样写。
+- **核心的 DTooltip**（float-kit，核心和插件里用组件写的提示）行为不改，`common/common.scss` 只把外观改成与全局提示一致：
+  深底浅字、系统字体、主题圆角、箭头同色、淡入用动效令牌。
+- **测试**：`test/unit/lib/gtmc-global-tooltip-test.js`，在 Discourse 源码目录对着运行中的开发站执行
+  `QUNIT_RAILS_ENV=development bin/qunit --theme-name GTMC --qunit-path /theme-qunit`（主题要先导入，测试文件随主题上传）。
 
 ## 页脚
 
@@ -257,8 +334,5 @@ pyftsubset fusion-pixel-12px-proportional-zh_hans.ttf.woff2 \
 下面这些还**没有逐项在运行中的站上核对过**（只做了静态检查，或只对照过核心源码）：
 
 - 桌面和手机宽度下，首页、话题页、发帖框、用户页、管理后台有没有错位或看不清的文字。
-- `#site-text-logo`、`.sidebar-section-link.active`
-  这几个核心选择器在当前 Discourse 版本里是否仍然命中（只对照过 `discourse/discourse` 主分支的源码，没有对着运行中的实例看过）。
 - 像素字体是否被 Discourse 正确上传并通过 `$gtmc-pixel-font` 注入（浏览器开发者工具里看 `@font-face` 的 `src` 是否是 `/uploads/...`）。
 - 压缩包导入是否把 `about.json` 的两套配色、字体资源都建出来。
-- 手机端 24px 的 Logo 文字在页头里是否放得下；放不下就新增 `mobile/mobile.scss` 把 `--gtmc-logo-font-size` 调小。

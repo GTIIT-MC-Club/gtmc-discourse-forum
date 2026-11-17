@@ -44,11 +44,7 @@ SETTINGS = {
 
   # 字体用系统字体栈（core 的 System 项，key 为 system）。
   # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
-  # 清掉核心默认的 Discourse Logo 图片：有 Logo 图时页头显示图片，主题的像素字体站点标题就不会出现。
-  # 用 "" 而不是 nil：nil 会触发核心「upload 设置隐式转换」的弃用警告。
-  logo: "",
-  logo_small: "",
-
+  # Logo 图片不由脚本管：管理员在后台上传 design/brand/gtmc-logo-3x.png（见 infra/content/admin-setup.md）。
   base_font: "system",
   heading_font: "system",
 
