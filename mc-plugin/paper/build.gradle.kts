@@ -1,3 +1,8 @@
+repositories {
+    // 只有 paper 需要 Paper 的仓库；common 不依赖 Paper。
+    maven("https://repo.papermc.io/repository/maven-public/")
+}
+
 dependencies {
     implementation(project(":common"))
 
