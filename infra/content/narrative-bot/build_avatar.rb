@@ -2,7 +2,7 @@
 
 # 把 avatar.txt（像素网格）转成 avatar.png，供 infra/discourse/narrative_bot.rb 上传为引导机器人的头像。
 # 用法（在仓库根目录）：ruby infra/content/narrative-bot/build_avatar.rb
-# 只用 Ruby 标准库。PNG 用最近邻放大，保持像素的硬边；不用缩略插值，否则像素风会糊。
+# 只用 Ruby 标准库。PNG 逐像素放大，保持硬边。
 
 require "zlib"
 

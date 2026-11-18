@@ -1,10 +1,9 @@
 # 引导机器人（小火把）的简介和台词，由 infra/discourse/narrative_bot.rb 写进论坛。
-# 在这里改文字，重跑脚本即生效；在后台「文本」里改了同一条，重跑脚本会被改回来。
 # 从本文件删掉一条后，脚本不会替你还原它，要到后台「自定义文本」里手动还原。
 #
 # 占位符分两种，不要混：
 #   %{名字}   核心和插件的翻译占位符，运行时由插件填，每条台词能用哪些由英文原文决定
-#             （plugins/discourse-narrative-bot/config/locales/server.en.yml）。用了原文没有的占位符，脚本会报错退出。
+#             （plugins/discourse-narrative-bot/config/locales/server.en.yml）。
 #   {{名字}}  本脚本在写入前替换：{{bot_name}} 机器人的显示名，{{newcomer_guide_url}} 新人指南帖的地址，
 #             {{appeal_url}} 「白名单与申诉」版块的地址。后两个地址带数据库 id，每个站点不同，不能写死。
 #

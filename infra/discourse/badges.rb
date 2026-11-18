@@ -7,21 +7,14 @@
 #   1. infra/discourse/site_settings.rb 已执行（授予条件里引用的版块由它创建）；
 #   2. GTMC 主题已导入（徽章图标来自主题的图标精灵，见 gtmc-forum-theme 的 README.md「图标」）。
 #
-# 用法（在自有机器上）：
-#   docker cp badges.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/badges.rb
+# 由 infra/deploy-discourse.sh 调用。
 #
-# 自动授予：授予条件写成 SQL 查询，核心每天跑一次（触发器「每日更新」），所以新徽章最迟一天后才会出现；
-# 想立刻看到结果，在 rails runner 里执行 BadgeGranter.backfill(Badge.find_by(name: "建筑师"))。
+# 自动授予：授予条件写成 SQL 查询，核心每天跑一次（触发器「每日更新」），所以新徽章最迟一天后才会出现。
 # 查询只读 badge_posts 视图（核心提供：已排除删除的帖子、私信、受限版块、悄悄话），所以老玩家俱乐部这类
 # 受限版块里的帖子不会被统计。条件不再满足（比如帖子被删）时，下一次每日更新会收回徽章。
 #
-# 不需要打开隐藏设置 enable_badge_sql：脚本直接写数据库，核心定时授予时也不检查它。
-# 它只管后台徽章编辑页的「查询」输入框和预览接口，打开后任何管理员都能在页面上写任意 SQL，权限过大，所以保持关闭。
-# 这也意味着管理员在后台看不到这些查询，要看就读本文件。
-#
-# 手工授予的徽章（引路人）没有查询，由管理员在徽章页「授予」。自动授予的徽章不要同时手工授予：
-# 核心每天按查询结果核对，只会收回「系统授予」的记录，手工授予的不受影响，但会让徽章的含义混乱。
+# 不打开隐藏设置 enable_badge_sql：脚本直接写数据库，核心定时授予时也不检查它；它只管后台徽章编辑页的
+# 「查询」输入框和预览接口，打开后任何管理员都能在页面上写任意 SQL，权限过大。
 
 THEME_NAME = "GTMC"
 BADGE_GROUPING_NAME = "社团成就"
