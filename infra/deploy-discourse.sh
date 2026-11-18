@@ -21,8 +21,7 @@
 #   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
 #
 # 可重复执行：app.yml 内容没变就不重建容器（重建有停机），站点脚本本身是幂等的。
-# 顺序依赖见 infra/content/admin-setup.md：站点设置 → 主题 → 侧边栏 → 徽章 → 引导机器人 → 新手教程，
-# 后一个脚本依赖前一个的结果，缺了会自己报错退出。
+# 脚本之间的顺序依赖见 infra/content/admin-setup.md。
 
 set -euo pipefail
 
@@ -66,8 +65,7 @@ sync_repository() {
   sudo -u "$owner" git -C "$REPO" pull --ff-only
 }
 
-# 教程仓库和本仓库同一个属主，理由同 sync_repository。拉不下来（GitHub 不通）时 set -e 让部署停在这里，
-# 不拿旧的或不存在的教程去同步；这时站点设置等脚本也还没跑，修好网络后整个脚本重跑即可。
+# 教程仓库和本仓库同一个属主，理由同 sync_repository。
 sync_wiki_repository() {
   local owner
   owner="$(stat -c %U "$REPO")"
@@ -84,7 +82,7 @@ pick_web_hostname() {
   sed -n 's/^  DISCOURSE_HOSTNAME:[[:space:]]*//p' "$1"
 }
 
-# 把模板写成最终的 app.yml：只在传了 GTMC_FORUM_HOST 时替换主机名那一行，其余原样。
+# 主机名可能来自环境变量：只在显式传了 GTMC_FORUM_HOST 时改，其余原样。
 render_app_config() {
   local rendered="$1"
   if [ -z "$FORUM_HOST" ]; then
@@ -98,8 +96,7 @@ render_app_config() {
   sed "s/^  DISCOURSE_HOSTNAME:.*/  DISCOURSE_HOSTNAME: $FORUM_HOST/" "$APP_TEMPLATE" >"$rendered"
 }
 
-# 把发信配置文件里的 KEY=VALUE 逐行写进 app.yml 的 env 段。值一律写成 YAML 单引号字符串
-# （内部的单引号写两遍），密码里有 # : 空格等字符也不会被 YAML 误解。
+# 值一律写成 YAML 单引号字符串（内部的单引号写两遍），密码里有 # : 空格等字符也不会被 YAML 误解。
 merge_smtp_env() {
   local rendered="$1" env_lines="$2" line key value count=0
   if [ ! -f "$SMTP_ENV_FILE" ]; then
@@ -217,6 +214,7 @@ if [ "$run_scripts" -eq 1 ]; then
 == 完成
 还剩下脚本不管的手工步骤（见 infra/content/admin-setup.md）：
   1. 后台上传 Logo：设置 → 品牌 → Logo，用 design/brand/gtmc-logo-3x.png
-  2. 在「公告」发两篇置顶帖后重跑一次本脚本，侧边栏和机器人结尾的链接才会指向它们
+  2. 「欢迎与社区规则」置顶帖发在「公告」，「新人指南」置顶帖发在「新人指南」版块；
+     发完后重跑一次本脚本，侧边栏和机器人结尾的链接才会指向那篇帖子
 DONE
 fi
