@@ -1,22 +1,16 @@
-# 内网阶段（域名、VPS 都还没有）的 Discourse 容器配置。
+# 内网阶段（域名、VPS 都还没有）的 Discourse 容器配置，对外方案见 app.yml。
 # 放在论坛虚拟机 100（gtmc-forum，192.168.2.111）的 /var/discourse/containers/app.yml，
 # 生效方式：sudo ./launcher rebuild app。
 #
 # 有域名但还没有 VPS 时，对外入口用 Cloudflare Tunnel（见 infra/README.md「Cloudflare Tunnel」）：
 # 部署时用 GTMC_FORUM_HOST 传入域名、GTMC_FORCE_HTTPS 保持 true，本文件不用改。
-#
-# 这是临时配置，不是最终形态。域名和 VPS 到位后按 infra/discourse/app.yml 换成正式版，
-# 然后把本文件删掉——两套配置同时存在会让人不知道该改哪份。
 
 templates:
   - "templates/postgres.template.yml"
   - "templates/redis.template.yml"
   - "templates/web.template.yml"
   - "templates/web.ratelimited.template.yml"
-  # 不引 templates/web.china.template.yml：它的 before_code 会把容器里所有
-  # https://github.com/ 改写成 https://mirror.ghproxy.com/...，而这个代理站从这台机器
-  # 连不上（curl 6 秒超时），git fetch 会一直重试，rebuild 就永远停在"正在拉代码"。
-  # 它顺带配的 gem/npm 镜像也不需要：实测直连 rubygems.org 0.29s、registry.npmjs.org 0.12s。
+  # 不引 templates/web.china.template.yml：理由同 app.yml，见那里的说明。
 
 # 没有 frpc，内网机器直接连。只绑内网地址，不监听到公网网卡。
 expose:

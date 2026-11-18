@@ -14,6 +14,3 @@ CHANGEME.forum.domain {
 	# 也不要设置全局 trusted_proxies（本机前面没有别的反向代理）。
 	reverse_proxy 127.0.0.1:8880
 }
-
-# 第三期的 CONNECT_HOST（bridge）和可选的 MAP_HOST（BlueMap）在两个项目就绪后加在本文件末尾，
-# 反代目标同样是 frp 转出来的回环端口。

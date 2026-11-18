@@ -49,7 +49,6 @@ hooks:
         cd: $home/plugins
         cmd:
           - git clone https://github.com/discourse/docker_manager.git
-          # gamification、chat-integration、solved 等官方插件已随核心捆绑，无需在此克隆。
           # 自写插件在单独的仓库 gtmc-forum-plugin，按 Discourse 的标准做法克隆成 plugins/discourse-gtmc：
           # 目录名就是插件名（plugin.rb 的 name），与仓库名无关。完整克隆而不是 --depth 1，
           # 后台「升级」页（docker_manager）要靠 Git 历史算出落后几个提交。
