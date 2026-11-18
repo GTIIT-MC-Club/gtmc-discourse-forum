@@ -61,10 +61,8 @@ hooks:
         cd: $home/plugins
         cmd:
           - git clone https://github.com/discourse/docker_manager.git
-          - rm -rf /tmp/gtmc-discourse ./discourse-gtmc
-          - git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git /tmp/gtmc-discourse
-          - cp -r /tmp/gtmc-discourse/plugins/discourse-gtmc ./discourse-gtmc
-          - rm -rf /tmp/gtmc-discourse
+          - rm -rf ./discourse-gtmc
+          - git clone https://github.com/GTIIT-MC-Club/gtmc-forum-plugin.git discourse-gtmc
 
 run:
   # 经 Cloudflare Tunnel 进来的请求，在容器看来都来自 cloudflared 所在的这台虚拟机

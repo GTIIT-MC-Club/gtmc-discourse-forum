@@ -50,13 +50,12 @@ hooks:
         cmd:
           - git clone https://github.com/discourse/docker_manager.git
           # gamification、chat-integration、solved 等官方插件已随核心捆绑，无需在此克隆。
-          # 自写插件 discourse-gtmc 在本仓库的子目录里，Discourse 要求每个插件是 plugins/ 下的一个目录，
-          # 所以先浅克隆整个仓库到临时目录，只复制插件目录过来。仓库是私有的话，地址里要带只读的访问令牌。
-          # 先 rm 两个目录，是为了在同一个容器里重跑这个钩子时结果不变（cp -r 遇到已有目录会套一层）。
-          - rm -rf /tmp/gtmc-discourse ./discourse-gtmc
-          - git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git /tmp/gtmc-discourse
-          - cp -r /tmp/gtmc-discourse/plugins/discourse-gtmc ./discourse-gtmc
-          - rm -rf /tmp/gtmc-discourse
+          # 自写插件在单独的仓库 gtmc-forum-plugin，按 Discourse 的标准做法克隆成 plugins/discourse-gtmc：
+          # 目录名就是插件名（plugin.rb 的 name），与仓库名无关。完整克隆而不是 --depth 1，
+          # 后台「升级」页（docker_manager）要靠 Git 历史算出落后几个提交。
+          # 先 rm 是为了在同一个容器里重跑这个钩子时不因目录已存在而失败。
+          - rm -rf ./discourse-gtmc
+          - git clone https://github.com/GTIIT-MC-Club/gtmc-forum-plugin.git discourse-gtmc
 
 run:
   # 流量路径：用户 → Caddy(VPS) → frp → 127.0.0.1:8880 → 容器。
