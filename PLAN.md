@@ -243,6 +243,13 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 
 ---
 
+### 4.4 主题与插件之间的出口
+
+- 右栏出口 `gtmc-right-rail`：由主题提供（`<PluginOutlet @name="gtmc-right-rail">`），插件把面板渲染进去，
+  面板按插件注册的顺序从上到下排。出现在话题列表页（`@outletArgs.topic` 为 `null`）和话题页（`@outletArgs.topic` 是当前话题）；
+  手机宽度主题不渲染右栏，插件在手机上自己换形态。出现条件的细节见 `gtmc-forum-theme` 的 README「右栏」。
+- 改出口名或 `outletArgs` 时先改本节，再按第 2 节的顺序改两个仓库。
+
 ## 5. 第一期任务（MVP）
 
 标 **H** 的任务只能由负责人本人做（花钱、实名、收验证码）。
