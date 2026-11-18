@@ -1,0 +1,271 @@
+# 由 infra/export-forum-config.sh 从论坛导出，不要手改。回档方法见 CONFIGURATION.md。
+---
+- locale: zh_CN
+  key: badges.basic_user.description
+  value: 升到信任等级 1，走完了新手期，可以正常发言了
+- locale: zh_CN
+  key: badges.basic_user.name
+  value: 初来乍到
+- locale: zh_CN
+  key: badges.first_emoji.description
+  value: 在帖子里用了表情符号
+- locale: zh_CN
+  key: badges.first_emoji.name
+  value: 气氛组
+- locale: zh_CN
+  key: badges.first_like.description
+  value: 给别人的帖子点了第一个赞
+- locale: zh_CN
+  key: badges.first_like.name
+  value: 点亮火把
+- locale: zh_CN
+  key: badges.first_link.description
+  value: 在帖子里放了指向另一个话题的链接
+- locale: zh_CN
+  key: badges.first_link.name
+  value: 搭好第一座桥
+- locale: zh_CN
+  key: badges.first_mention.description
+  value: 在帖子里提及（@）了其他用户
+- locale: zh_CN
+  key: badges.first_mention.name
+  value: 喊人组队
+- locale: zh_CN
+  key: badges.first_quote.description
+  value: 引用了别人的帖子
+- locale: zh_CN
+  key: badges.first_quote.name
+  value: 引经据典
+- locale: zh_CN
+  key: badges.first_share.description
+  value: 分享了一个帖子的链接
+- locale: zh_CN
+  key: badges.first_share.name
+  value: 传送门
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.bookmark.instructions
+  value: '第一步：把这条私信收藏起来，以后想找我随时翻得到。点下面的 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-ellipsis.png" width="16" height="16"> 展开更多操作，再点 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-bookmark.png" width="16" height="16"> **把这条私信加入书签**。做完之后说不定有份 :gift: 等着你。'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.bookmark.not_found
+  value: '我没看到书签 :thinking: 书签按钮在每条帖子下面，要先点 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-ellipsis.png" width="16" height="16"> 展开更多操作才会出现。'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.bookmark.reply
+  value: 收藏成功！以后想回到我们的对话，点右上角的头像，进[书签标签页](%{bookmark_url})就能找到。别人发的好帖子也可以这样存起来。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.emoji.instructions
+  value: |-
+    第三步：表情。你可能注意到我的消息里有小图标 :blue_car::dash: 它们叫[表情符号](https://en.wikipedia.org/wiki/Emoji)。在回复里**加一个表情**吧，下面任意一种都行：
+
+    - 输入 `:) ;) :D :P :O`
+
+    - 输入冒号 <kbd>:</kbd>，再接表情的名字，比如 `:tada:`
+
+    - 点编辑器里的表情按钮 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-smile.png" width="16" height="16">，手机上也可以直接用输入法里的表情
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.emoji.not_found
+  value: |-
+    没看到表情 :sob: 输入一个冒号 <kbd>:</kbd> 会弹出表情选择器，再打出表情名的前几个字，比如 `:bird:`。
+
+    也可以点编辑器里的表情按钮 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-smile.png" width="16" height="16">。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.emoji.reply
+  value: '表情满分 :sparkles:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.end.message
+  value: |-
+    全部通过！@%{username}，这是给你的结业证书，你配得上它：
+
+    %{certificate}
+
+    教程到此结束，接下来可以做这两件事：
+
+    - 想进服玩：到「[白名单与申诉](/c/10-category/10)」版块发帖申请白名单，帖子里有模板。
+
+    - 想先了解社团和论坛：读一遍置顶的「[新人指南](/c/13-category/13)」，里面写了怎么升级、各个信任等级能做什么。
+
+    也可以先去看看[最新话题](%{base_uri}/latest)。想再听我唠叨一遍，随时给我发私信，或者在帖子里 @ 我 `@%{discobot_username}`。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.flag.instructions
+  value: |-
+    第八步：举报。论坛的友好氛围要大家一起[维护](%{guidelines_url})。看到广告、辱骂或者别的不合适的内容，可以举报，让作者或者[管理员](%{about_url})知道。举报的原因有很多，选**其他**会拉起一条和版主的私信，可以详细说明。
+
+    > :imp: 我在这写了些难听的话
+
+    点这条帖子的举报按钮 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-flag.png" width="16" height="16">，原因选**不当言论**。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.flag.not_found
+  value: '我的坏帖子还没被举报为「不当言论」 :worried: 用**举报**按钮 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-flag.png" width="16" height="16"> 试试。找不到的话，先点 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-ellipsis.png" width="16" height="16"> 展开更多操作。'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.flag.reply
+  value: "[管理员](%{group_url})会私下收到你的举报通知。如果有足够多的人举报同一个帖子，它会被自动隐藏，以防万一。（我其实没写过难听的话 :angel:，所以举报我已经撤销了。）"
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.formatting.instructions
+  value: |-
+    第五步：排版。让回复里的几个字变成**粗体**或_斜体_：
+
+    - 输入 `**粗体**` 或 `_斜体_`
+
+    - 或者点编辑器里的 <kbd><b>B</b></kbd>、<kbd><i>I</i></kbd> 按钮
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.formatting.not_found
+  value: |-
+    你的回复里没有排版 :pencil2:
+
+    再试一次吧。找不到的话，用编辑器里的 <kbd><b>B</b></kbd> 或 <kbd><i>I</i></kbd> 按钮。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.formatting.reply
+  value: '好看！排版还可以用 HTML 和 BBCode，想学更多看这份 [Markdown 教程](https://commonmark.org/help)。以后写红石教程帖会用得上 :nerd:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.hello.message
+  value: |-
+    欢迎加入 %{title}！我是小火把，论坛的引路机器人，专门给新来的同学照路。
+
+    - 我只是个程序，看不懂复杂的话。需要真人帮忙的时候，找[管理员](%{base_uri}/about)，他们都是社团成员。
+
+    - 新账号刚开始有一些限制（比如发帖的频率），这是为了防广告。多逛一逛、多读几个帖子、发几个帖，就会自动升级、解锁更多功能，还会收到[徽章](%{base_uri}/badges)。
+
+    - 请友好地交流，规则写在置顶的「欢迎与社区规则」里。
+
+    接下来我带你把论坛的基本操作走一遍，大约五分钟，每做完一步我会告诉你。走完之后，我会告诉你下一步去哪。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.hello.title
+  value: 欢迎来到 GTMC！我是小火把
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.images.instructions
+  value: |-
+    第七步：发图。这是一张独角兽的图（别问，我也不知道它怎么跑进矿洞的）：
+
+    <img src="%{base_uri}/plugins/discourse-narrative-bot/images/unicorn.png" width="520" height="520">
+
+    喜欢的话，点这条帖子下面的赞 :heart: 告诉我。
+
+    然后**回复一张图片**：拖进编辑框、点上传按钮、直接粘贴都行，什么图都可以。以后在「建筑展示」晒作品也是这样发。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.images.like_not_found
+  value: '你是不是忘了给我的[帖子](%{url})点赞 :heart: ？:crying_cat_face:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.images.reply
+  value: '图收到了！我给它点了个赞 :heart: 让你知道我有多喜欢 :heart_eyes:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.likes.instructions
+  value: |-
+    第七步：点赞。这是一张独角兽的图（别问，我也不知道它怎么跑进矿洞的）：
+
+    <img src="%{base_uri}/plugins/discourse-narrative-bot/images/unicorn.png" width="520" height="520">
+
+    喜欢的话，点这条帖子下面的赞 :heart: 告诉我。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.likes.not_found
+  value: '你是不是忘了给我的[帖子](%{url})点赞 :heart: ？:crying_cat_face:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.likes.reply
+  value: 谢谢你的赞！
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.mention.instructions
+  value: 第四步：@ 某个人。想让谁看到你的帖子，就输入 `@` 再接他的用户名，他会收到通知。试试在回复里 @ 我：**`@%{discobot_username}`**
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.mention.not_found
+  value: '我没在回复里看到我的名字 :frowning: 再 @ 一次 `@%{discobot_username}` 试试。输入 `@` 之后会弹出候选，直接点我就行。'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.mention.reply
+  value: '_谁在叫我？_ :raised_hand: 原来是你！被 @ 的人会收到提醒，所以别滥用哦 :ok_hand:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.onebox.instructions
+  value: |-
+    第二步：发一个链接给我。在回复里把**链接单独放一行**，论坛会自动把它展开成带标题和摘要的卡片。
+
+    从下面挑一个复制（手机上长按链接，电脑上右键选「复制链接地址」）：
+
+     [https://en.wikipedia.org/wiki/Inherently_funny_word](https://en.wikipedia.org/wiki/Inherently_funny_word)
+     [https://en.wikipedia.org/wiki/Death_by_coconut](https://en.wikipedia.org/wiki/Death_by_coconut)
+     [https://en.wikipedia.org/wiki/Calculator_spelling](https://en.wikipedia.org/wiki/Calculator_spelling)
+
+    如果卡片没有展开（校园网可能访问不到这些网站），不要紧，只要链接单独成行就算过关。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.onebox.not_found
+  value: |-
+    没找到链接 :cry: 试试把下面这个链接**单独放一行**，贴在下一条回复里：
+
+    [https://en.wikipedia.org/wiki/Exotic_Shorthair](https://en.wikipedia.org/wiki/Exotic_Shorthair)
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.onebox.reply
+  value: 收到！这样展开对大多数 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-link.png" width="16" height="16"> 链接都管用，贴本站其他话题的链接、GitHub 的链接也一样。记住：链接要**独占一行**，前后不能有别的字。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.quoting.instructions
+  value: |-
+    第六步：引用。回复的时候引用我的话，我才知道你在回应哪一句。
+
+    > 先插火把，再挖矿。
+    >
+    > 红石线路出了问题，先查有没有断。
+    >
+    > 建得糙没关系，发出来就有人夸。
+
+    选中上面 ↑ 你喜欢的那句，点弹出来的**引用**按钮；或者选中文字后点帖子底部的**回复**按钮。
+
+    在引用下面写一两个字，说说为什么选这句，我很好奇 :thinking:
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.quoting.not_found
+  value: |-
+    你的回复里好像没有引用我的话？
+
+    选中我帖子里的任意文字，就会弹出<kbd>**引用**</kbd>按钮；选中文字后点**回复**也行。再试一次？
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.quoting.reply
+  value: '眼光不错，这也是我最喜欢的一句！:left_speech_bubble:'
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.search.hidden_message
+  value: |-
+    你怎么现在才发现这只水豚？:wink:
+
+    <img src="%{base_uri}/plugins/discourse-narrative-bot/images/capybara-eating.gif">
+
+    发现自己回到话题开头了吗？给这只饿坏的水豚喂点吃的：**回复表情 `%{search_answer}`**，你就会自动回到话题末尾。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.search.instructions
+  value: |-
+    _psst_ …… 我在这个话题里藏了个彩蛋。想找到它，**点右上角的搜索图标** <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-search.png" width="16" height="16">，选「在此话题中」，然后搜索。
+
+    在这个话题里搜索 "capy​bara"（一种动物）试试。
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.search.not_found
+  value: 好像遇到麻烦了，抱歉。你搜索 <img src="%{base_uri}/plugins/discourse-narrative-bot/images/font-awesome-search.png" width="16" height="16"> 的词是 **capy​bara** 吗？
+- locale: zh_CN
+  key: discourse_narrative_bot.new_user_narrative.search.reply
+  value: |-
+    找到啦 :tada:
+
+    - 想搜得更细，去[完整搜索页](%{search_url})。
+
+    - 在很长的讨论里想跳到某一楼，用右侧（手机上在底部）的话题时间线。
+
+    - 有实体键盘的话，按 <kbd>?</kbd> 可以看到快捷键。
+- locale: zh_CN
+  key: discourse_narrative_bot.timeout.message
+  value: |-
+    @%{username} 好一阵没听到你的动静了，是不是在矿洞里走丢了？
+
+    - 想继续：直接回复我就行。
+
+    - 想跳过这一步：回复 `%{skip_trigger}`。
+
+    - 想从头再来：回复 `%{reset_trigger}`。
+
+    不想继续也没关系，我只是个机器人，火把不会生气的 :sob:
+- locale: zh_CN
+  key: discourse_narrative_bot.track_selector.do_not_understand.first_response
+  value: '谢谢你的回复！不过我是个写得不太聪明的机器人，这句我没看懂 :frowning:'
+- locale: zh_CN
+  key: discourse_narrative_bot.track_selector.do_not_understand.second_response
+  value: |-
+    抱歉，我还是没看懂 :anguished:
+
+    我只是个机器人，要找真人请看[关于页面](%{base_path}/about)，管理员都是社团成员。
+
+    我先退到一边，不打扰你了。
+- locale: zh_CN
+  key: discourse_narrative_bot.track_selector.do_not_understand.track_response
+  value: 你可以再试一次；想跳过这一步就回复 `%{skip_trigger}`；想从头再来就回复 `%{reset_trigger}`。
+- locale: zh_CN
+  key: discourse_narrative_bot.track_selector.random_mention.reply
+  value: 想知道我都会些什么？回复 `@%{discobot_username} %{help_trigger}`。

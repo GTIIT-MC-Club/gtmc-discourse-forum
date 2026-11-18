@@ -1,0 +1,293 @@
+# 由 infra/export-forum-config.sh 从论坛导出，不要手改。回档方法见 CONFIGURATION.md。
+---
+- name: Admired
+  enabled: true
+- name: Aficionado
+  enabled: true
+- name: Anniversary
+  enabled: true
+- name: Appreciated
+  enabled: true
+- name: Autobiographer
+  enabled: true
+- name: Barfly
+  enabled: false
+- name: Basic User
+  enabled: true
+- name: Brainstormer
+  enabled: true
+- name: Campaigner
+  enabled: true
+- name: Certified
+  enabled: true
+- name: Champion
+  enabled: true
+- name: Chatterbox
+  enabled: false
+- name: Connector
+  enabled: false
+- name: Crazy in Love
+  enabled: true
+- name: Crowd Puller
+  enabled: false
+- name: Daydreamer
+  enabled: true
+- name: Devotee
+  enabled: true
+- name: Early Bird
+  enabled: false
+- name: Editor
+  enabled: true
+- name: Empathetic
+  enabled: true
+- name: Enthusiast
+  enabled: true
+- name: Explorer
+  enabled: false
+- name: Familiar Face
+  enabled: false
+- name: Famous Link
+  enabled: true
+- name: First Emoji
+  enabled: true
+- name: First Flag
+  enabled: true
+- name: First Like
+  enabled: true
+- name: First Link
+  enabled: true
+- name: First Mention
+  enabled: true
+- name: First Onebox
+  enabled: true
+- name: First Quote
+  enabled: true
+- name: First Reaction
+  enabled: true
+- name: First Reply By Email
+  enabled: true
+- name: First Share
+  enabled: true
+- name: Gives Back
+  enabled: true
+- name: Good Post
+  enabled: true
+- name: Good Share
+  enabled: true
+- name: Good Topic
+  enabled: true
+- name: Great Post
+  enabled: true
+- name: Great Share
+  enabled: true
+- name: Great Topic
+  enabled: true
+- name: Higher Love
+  enabled: true
+- name: Host
+  enabled: false
+- name: Hot Link
+  enabled: true
+- name: Icebreaker
+  enabled: false
+- name: Inner Circle
+  enabled: false
+- name: Innovator
+  enabled: true
+- name: Leader
+  enabled: true
+- name: Licensed
+  enabled: true
+- name: Life of the Party
+  enabled: false
+- name: Marathoner
+  enabled: false
+- name: Master of Ceremonies
+  enabled: false
+- name: Member
+  enabled: true
+- name: Mic Check
+  enabled: false
+- name: New User of the Month
+  enabled: true
+- name: Nice Post
+  enabled: true
+- name: Nice Share
+  enabled: true
+- name: Nice Topic
+  enabled: true
+- name: Night Owl
+  enabled: false
+- name: Nomad
+  enabled: false
+- name: Omnipresent
+  enabled: false
+- name: Out of Love
+  enabled: true
+- name: Packed House
+  enabled: false
+- name: Partners in Crime
+  enabled: false
+- name: Patron
+  enabled: false
+- name: People Magnet
+  enabled: false
+- name: Plus One
+  enabled: false
+- name: Popular Link
+  enabled: true
+- name: Promoter
+  enabled: true
+- name: Read Guidelines
+  enabled: true
+- name: Reader
+  enabled: true
+- name: Regular
+  enabled: true
+- name: Respected
+  enabled: true
+- name: Rookie
+  enabled: false
+- name: Silver Tongue
+  enabled: false
+- name: Social Butterfly
+  enabled: false
+- name: Solved 1
+  enabled: true
+- name: Solved 2
+  enabled: true
+- name: Solved 3
+  enabled: true
+- name: Solved 4
+  enabled: true
+- name: Thank You
+  enabled: true
+- name: The Mayor
+  enabled: false
+- name: Visionary
+  enabled: true
+- name: Weekend Warrior
+  enabled: false
+- name: Welcome
+  enabled: true
+- name: Wiki Editor
+  enabled: true
+- name: 建筑师
+  enabled: true
+  badge_type: Silver
+  grouping: 社团成就
+  icon: gtmc-bricks
+  description: 在「建筑展示」发过带截图的作品，并收到至少 3 个赞
+  long_description: |-
+    在「建筑展示」版块发出的作品帖里附有截图，并且这篇帖子收到至少 3 个赞。系统每天自动核对一次。
+
+    系统看不出作品是不是原创。搬运别人的作品，管理员会删帖，删帖之后下一次核对时徽章会被收回。
+  allow_title: true
+  multiple_grant: false
+  listable: true
+  auto_revoke: true
+  target_posts: true
+  show_posts: true
+  trigger: 0
+  query: |-
+    SELECT p.user_id, p.id AS post_id, CURRENT_TIMESTAMP AS granted_at
+    FROM badge_posts p
+    JOIN topics t ON t.id = p.topic_id
+    JOIN categories c ON c.id = t.category_id
+    WHERE c.name = '建筑展示'
+      AND p.post_number = 1
+      AND p.post_type = 1
+      AND p.like_count >= 3
+      AND EXISTS (
+        SELECT 1
+        FROM upload_references ur
+        JOIN uploads u ON u.id = ur.upload_id
+        WHERE ur.target_type = 'Post'
+          AND ur.target_id = p.id
+          AND u.extension IN ('png', 'jpg', 'jpeg', 'gif', 'webp', 'avif')
+      )
+- name: 引路人
+  enabled: true
+  badge_type: Gold
+  grouping: 社团成就
+  icon: gtmc-compass
+  description: 带会了至少一位完全的新手
+  long_description: |-
+    带会了至少一位完全的新手：对方的第一篇帖子，或者第一次进服，是你带的。
+
+    这枚徽章由管理员手工授予，系统没有办法自动判断。认为自己带过新人，或者想推荐别人，请联系管理员。
+  allow_title: true
+  multiple_grant: false
+  listable: true
+  auto_revoke: true
+  target_posts: false
+  show_posts: false
+  trigger: 0
+- name: 活动常客
+  enabled: true
+  badge_type: Bronze
+  grouping: 社团成就
+  icon: gtmc-cake
+  description: 在 3 个以上不同的「活动」帖子下报名过
+  long_description: |-
+    在「活动」版块里，别人发起的 3 个以上不同的活动帖下回帖报名过。系统每天自动核对一次。
+
+    系统只能看到报名，看不到你有没有到场。
+  allow_title: true
+  multiple_grant: false
+  listable: true
+  auto_revoke: true
+  target_posts: false
+  show_posts: false
+  trigger: 0
+  query: |-
+    SELECT p.user_id, CURRENT_TIMESTAMP AS granted_at
+    FROM badge_posts p
+    JOIN topics t ON t.id = p.topic_id
+    JOIN categories c ON c.id = t.category_id
+    WHERE c.name = '活动'
+      AND p.post_number > 1
+      AND p.post_type = 1
+      AND t.user_id <> p.user_id
+    GROUP BY p.user_id
+    HAVING COUNT(DISTINCT p.topic_id) >= 3
+- name: 红石工程师
+  enabled: true
+  badge_type: Silver
+  grouping: 社团成就
+  icon: gtmc-gear
+  description: 在「技术开发」发过收到赞的帖子，也回答过别人的问题
+  long_description: |-
+    同时满足：
+
+    - 在「技术开发」发过帖子，并且收到至少 1 个赞；
+    - 在这个版块里回复过别人发的话题。
+
+    系统每天自动核对一次。它只能检查有人点赞、回复过别人，看不出内容有没有用、回复算不算答到点上；
+    发现有人只是凑条件，管理员会处理帖子。
+  allow_title: true
+  multiple_grant: false
+  listable: true
+  auto_revoke: true
+  target_posts: true
+  show_posts: true
+  trigger: 0
+  query: |-
+    SELECT own_post.user_id, own_post.id AS post_id, CURRENT_TIMESTAMP AS granted_at
+    FROM badge_posts own_post
+    JOIN topics own_topic ON own_topic.id = own_post.topic_id
+    JOIN categories c ON c.id = own_topic.category_id
+    WHERE c.name = '技术开发'
+      AND own_post.post_number = 1
+      AND own_post.post_type = 1
+      AND own_post.like_count >= 1
+      AND EXISTS (
+        SELECT 1
+        FROM badge_posts answer
+        JOIN topics answered_topic ON answered_topic.id = answer.topic_id
+        WHERE answer.user_id = own_post.user_id
+          AND answer.post_number > 1
+          AND answer.post_type = 1
+          AND answered_topic.category_id = own_topic.category_id
+          AND answered_topic.user_id <> own_post.user_id
+      )

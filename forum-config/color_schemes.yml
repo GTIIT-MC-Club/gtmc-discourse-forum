@@ -1,0 +1,102 @@
+# 由 infra/export-forum-config.sh 从论坛导出，不要手改。回档方法见 CONFIGURATION.md。
+---
+- name: Clover
+  theme: Horizon
+  user_selectable: true
+- name: Clover Dark
+  theme: Horizon
+  user_selectable: true
+- name: Dracula
+  user_selectable: true
+- name: GTMC Dark
+  theme: GTMC
+  user_selectable: true
+  colors:
+    danger: f0705a
+    header_background: 0e100e
+    header_primary: e6eae3
+    highlight: 6b5a1d
+    hover: 252a25
+    love: fa6c8d
+    primary: e6eae3
+    primary-600: 9aac8d
+    primary-medium: 9aac8d
+    quaternary: c08a4e
+    secondary: 171a17
+    selected: 1e3a1b
+    success: 5cc16a
+    tertiary: 6cc04a
+- name: GTMC Light
+  theme: GTMC
+  user_selectable: true
+  colors:
+    danger: b3261e
+    header_background: fbfbf8
+    header_primary: 1b211a
+    header_primary-medium: '566853'
+    highlight: f5e08a
+    hover: e9ece4
+    love: d6336c
+    primary: 1b211a
+    primary-400: 7f8f7b
+    primary-500: 717f6d
+    primary-600: 5b6d58
+    primary-low-mid: 7f8f7b
+    primary-medium: 5b6d58
+    quaternary: 8a5a2b
+    secondary: f5f6f1
+    selected: dff0d8
+    success: 1f7a32
+    tertiary: 2a741b
+- name: Horizon
+  theme: Horizon
+  user_selectable: true
+- name: Horizon Dark
+  theme: Horizon
+  user_selectable: true
+- name: Lily
+  theme: Horizon
+  user_selectable: true
+- name: Lily Dark
+  theme: Horizon
+  user_selectable: true
+- name: Marigold
+  theme: Horizon
+  user_selectable: true
+- name: Marigold Dark
+  theme: Horizon
+  user_selectable: true
+- name: Royal
+  theme: Horizon
+  user_selectable: true
+- name: Royal Dark
+  theme: Horizon
+  user_selectable: true
+- name: Solarized 浅色
+  user_selectable: true
+- name: Solarized 深色
+  user_selectable: true
+- name: Violet
+  theme: Horizon
+  user_selectable: true
+- name: Violet Dark
+  theme: Horizon
+  user_selectable: true
+- name: WCAG 亮
+  user_selectable: true
+- name: WCAG 暗
+  user_selectable: true
+- name: 中性
+  user_selectable: true
+- name: 夏季
+  user_selectable: true
+- name: 棕色
+  user_selectable: true
+- name: 深色
+  user_selectable: true
+- name: 灰琥珀色
+  user_selectable: true
+- name: 蓝黑
+  user_selectable: true
+- name: 黑红
+  user_selectable: true
