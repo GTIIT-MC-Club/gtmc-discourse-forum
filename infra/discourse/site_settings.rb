@@ -23,7 +23,13 @@ SETTINGS = {
   # 准入：仅校园邮箱可注册，游客只读公开版块
   allowed_email_domains: "gtiit.edu.cn",
   login_required: false,
-  invite_only: false,
+  # 仅邀请注册：发信额度每天 200 封，每个新人至少要一封激活信，Discourse 又没有每日注册上限，
+  # 所以由管理员按批发邀请（或发限定次数的邀请链接）来控制每天进来多少人。
+  invite_only: true,
+  invite_allowed_groups: "1|2", # 默认 1|2|12 含 TL2，每人每天可邀 10 人，人数就不受控了；先只给管理员和版主
+  # 默认 3：同一 IP 下已有 3 个 TL0 账号就拒绝新账号（邀请注册也一样）。校园网出口 IP 是共用的，
+  # 第四个同学就会被挡；防小号已经靠 allowed_email_domains 限定学校邮箱。
+  max_new_accounts_per_registration_ip: 0,
   must_approve_users: false,
 
   # 中文社区：标题和正文的最短长度放宽，开启中文搜索分词
