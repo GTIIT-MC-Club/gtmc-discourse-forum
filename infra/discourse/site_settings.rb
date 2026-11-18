@@ -85,6 +85,12 @@ SETTINGS = {
   tl3_requires_likes_given: 15, # 默认 30
   tl3_requires_likes_received: 10, # 默认 20
 
+  # 活动：核心捆绑的 discourse-events 插件，两个开关默认都关。右栏「近期活动」面板读它的活动列表，
+  # 任一没开面板就不出现。谁能在帖子里创建活动由 discourse_post_event_allowed_on_groups 决定，
+  # 默认（留空）只有管理员和版主，社团活动由干事发，保持默认。
+  discourse_events_enabled: true,
+  discourse_post_event_enabled: true,
+
   # 发信额度：阿里云邮件推送免费每天 200 封，超出后连注册激活信、密码重置也发不出去。
   # Discourse 没有全站每日上限，只能逐类压低通知邮件，把额度留给账号类邮件。
   # default_* 只影响之后注册的用户；已有用户要在后台改设置时勾选「更新现有用户」。

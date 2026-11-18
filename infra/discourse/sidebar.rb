@@ -12,6 +12,9 @@
 #   docker cp sidebar.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
 #     bundle exec rails runner /tmp/sidebar.rb
 #
+# 还会把「公告」版块写进 discourse-gtmc 插件的 gtmc_announcement_category（右栏公告面板读它），
+# 所以插件也要已安装。
+#
 # 版块名、图标名、链接都以这里为准。在后台改了侧边栏或版块顺序，重跑本脚本会被改回来。
 
 THEME_NAME = "GTMC"
@@ -158,6 +161,18 @@ def delete_seeded_category(setting_name)
   puts "deleted seeded category #{category.name}"
 end
 
+# 右栏「公告」面板（discourse-gtmc）按版块 id 读，版块改名或重建后 id 会变，所以每次按名字重新写一遍。
+def apply_announcement_panel_category(announcement_category)
+  new_value = announcement_category.id.to_s
+  if SiteSetting.gtmc_announcement_category.to_s == new_value
+    puts "gtmc_announcement_category is up to date"
+    return
+  end
+
+  SiteSetting.set(:gtmc_announcement_category, new_value)
+  puts "set gtmc_announcement_category = #{new_value}"
+end
+
 # 已有用户的侧边栏版块是注册时按当时的默认值复制的，改默认值不会影响他们。
 # 后台改这个设置时可以勾选「同时应用到现有用户」，核心为此排一个后台任务；这里同步执行同一个任务，
 # 脚本结束时结果已经生效。这个任务核心限定同一时刻只跑一个，脚本只在部署时手动执行一次，不会撞上。
@@ -242,6 +257,7 @@ end
 
 apply_category_order(gtmc_categories)
 apply_default_sidebar_categories(gtmc_categories)
+apply_announcement_panel_category(announcement_category)
 apply_community_section(links)
 apply_footer_settings(
   theme,
