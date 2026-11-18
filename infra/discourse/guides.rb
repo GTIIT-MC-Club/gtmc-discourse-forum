@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# 把仓库里的新手教程（一个 Markdown 文件一个话题）发到「新人指南」版块，可重复执行。
+# 把教程仓库 gtmc-forum-wiki 里的新手教程（一个 Markdown 文件一个话题）发到「新人指南」版块，可重复执行。
 # 仓库是唯一的源：论坛上的首帖被锁定，非管理人员不能编辑；管理人员在论坛上改了也会在下次执行时被覆盖。
-# 写作约定（front matter、相对链接）见 infra/content/guides/README.md。
+# 写作约定（front matter、相对链接）见 gtmc-forum-wiki 的 README.md。
 #
 # 每个文件对应的话题记在核心的永久链接（Permalink）里，地址是 wiki/<去掉 .md 的相对路径>，
 # 例如 launcher.md → /wiki/launcher。这个地址顺带成了教程的固定网址，话题改标题、换 slug 都不会变。
@@ -19,11 +19,12 @@
 # 链接换成 /t/<slug>/<id> 而不是 /wiki/<路径>：核心只为指向话题地址的链接建反向链接
 # （被链接的帖子底下显示「谁链接了我」），换成永久链接地址就没有了。
 #
-# 用法（在自有机器上）：把整个 infra/ 复制进容器，教程目录作为参数（以后教程可能搬到单独的仓库，所以不写死路径）：
-#   docker cp infra app:/tmp/gtmc-infra && docker exec -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-infra/content/guides
-# 本机开发站：在 Discourse 源码目录执行
-#   bin/rails runner <仓库>/infra/discourse/guides.rb <仓库>/infra/content/guides
+# 用法（在论坛虚拟机上）：把整个 infra/ 和教程仓库的检出目录复制进容器，教程目录作为参数：
+#   docker cp infra app:/tmp/gtmc-infra && docker cp ../gtmc-forum-wiki app:/tmp/gtmc-forum-wiki && \
+#     docker exec -u discourse -w /var/www/discourse app \
+#       bundle exec rails runner /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-forum-wiki
+# deploy-discourse.sh 会先克隆或拉取教程仓库再这样执行。本机开发站：在 Discourse 源码目录执行
+#   bin/rails runner <本仓库>/infra/discourse/guides.rb <gtmc-forum-wiki 的检出目录>
 #
 # 必须在 site_settings.rb 之后执行（「新人指南」版块由它创建）。执行顺序见 infra/content/admin-setup.md。
 
@@ -37,9 +38,8 @@ GUIDE_FILE_EXTENSION = ".md"
 PERMALINK_PREFIX = "wiki/"
 # 目录帖，在版块内置顶。只认最外层的 index.md，子目录里的 index.md 是普通教程
 INDEX_GUIDE_PATH = "index"
-# 页脚「在 GitHub 上编辑」的地址前缀。教程搬到别的仓库或目录时必须一起改
-SOURCE_EDIT_URL_BASE =
-  "https://github.com/GTIIT-MC-Club/gtmc-discourse/edit/main/infra/content/guides/"
+# 页脚「在 GitHub 上编辑」的地址前缀，后面接文件相对教程仓库根目录的路径。教程搬到别的仓库时必须一起改
+SOURCE_EDIT_URL_BASE = "https://github.com/GTIIT-MC-Club/gtmc-forum-wiki/edit/main/"
 # 文件路径会原样成为 /wiki/ 下的地址。只允许小写字母、数字和连字符，地址就不需要转义，
 # 核心保存永久链接时对非 ASCII 字符做的编码也不会让按路径查找对不上
 GUIDE_PATH_PATTERN = %r{\A[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)*\z}

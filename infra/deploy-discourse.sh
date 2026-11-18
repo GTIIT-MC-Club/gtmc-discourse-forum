@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # 一键把本仓库里的 Discourse 配置部署到论坛虚拟机的 Discourse 容器。
+# 插件和主题不经过本脚本复制：插件由 app.yml 的钩子在重建时克隆，主题由 import_theme.rb 让容器从 GitHub 安装，
+# 教程仓库 gtmc-forum-wiki 由本脚本克隆或拉取到本仓库旁边（$WIKI_REPO）再交给 guides.rb。
 # 在论坛虚拟机（100 gtmc-forum）上，从仓库检出目录里用 root 执行：
 #   sudo infra/deploy-discourse.sh
 #   sudo infra/deploy-discourse.sh --rebuild      # 强制重建容器（改 app.yml 之外的容器配置时）
@@ -25,6 +27,8 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WIKI_REPO="$(dirname "$REPO")/gtmc-forum-wiki"
+WIKI_REPOSITORY_URL="https://github.com/GTIIT-MC-Club/gtmc-forum-wiki.git"
 DISCOURSE_DIR="${DISCOURSE_DIR:-/var/discourse}"
 CONTAINER="${CONTAINER:-app}"
 APP_TEMPLATE="$REPO/infra/discourse/${GTMC_APP_TEMPLATE:-app.yml}"
@@ -60,6 +64,20 @@ sync_repository() {
   owner="$(stat -c %U "$REPO")"
   echo "== 以 $owner 的身份同步仓库 $REPO"
   sudo -u "$owner" git -C "$REPO" pull --ff-only
+}
+
+# 教程仓库和本仓库同一个属主，理由同 sync_repository。拉不下来（GitHub 不通）时 set -e 让部署停在这里，
+# 不拿旧的或不存在的教程去同步；这时站点设置等脚本也还没跑，修好网络后整个脚本重跑即可。
+sync_wiki_repository() {
+  local owner
+  owner="$(stat -c %U "$REPO")"
+  if [ -d "$WIKI_REPO/.git" ]; then
+    echo "== 以 $owner 的身份拉取教程仓库 $WIKI_REPO"
+    sudo -u "$owner" git -C "$WIKI_REPO" pull --ff-only
+  else
+    echo "== 以 $owner 的身份克隆教程仓库到 $WIKI_REPO"
+    sudo -u "$owner" git clone "$WIKI_REPOSITORY_URL" "$WIKI_REPO"
+  fi
 }
 
 pick_web_hostname() {
@@ -165,12 +183,14 @@ run_script() {
 }
 
 apply_site_configuration() {
+  sync_wiki_repository
+
   docker cp "$REPO/infra/discourse/site_settings.rb" "$CONTAINER:/tmp/"
   run_script "站点设置、版块、信任等级门槛" /tmp/site_settings.rb
 
-  copy_into_container "$REPO/theme" /tmp/gtmc-theme
+  # 主题由容器里的核心从 GitHub 克隆，容器要能连上 github.com
   docker cp "$REPO/infra/discourse/import_theme.rb" "$CONTAINER:/tmp/"
-  run_script "导入 GTMC 主题和两套配色" /tmp/import_theme.rb /tmp/gtmc-theme
+  run_script "从 GitHub 安装或更新 GTMC 主题和两套配色" /tmp/import_theme.rb
 
   docker cp "$REPO/infra/discourse/sidebar.rb" "$CONTAINER:/tmp/"
   run_script "侧边栏、版块顺序和图标、页脚" /tmp/sidebar.rb
@@ -181,8 +201,8 @@ apply_site_configuration() {
   copy_into_container "$REPO/infra" /tmp/gtmc-infra
   run_script "引导机器人小火把" /tmp/gtmc-infra/discourse/narrative_bot.rb
 
-  # 教程目录作为参数传入，以后教程搬到单独的仓库时只改这里
-  run_script "新手教程（从仓库同步到「新人指南」）" /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-infra/content/guides
+  copy_into_container "$WIKI_REPO" /tmp/gtmc-forum-wiki
+  run_script "新手教程（从 gtmc-forum-wiki 同步到「新人指南」）" /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-forum-wiki
 }
 
 require_root "$@"
