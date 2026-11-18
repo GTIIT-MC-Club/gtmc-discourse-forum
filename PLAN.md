@@ -186,7 +186,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
   同一 IP 在信任期内进任何一个服都免码。
 
 站点设置（都以 `gtmc_` 开头）：`gtmc_enabled`、`gtmc_ip_trust_hours`、`gtmc_login_code_ttl_seconds`、
-`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`、`gtmc_rail_visible_servers`（默认 3，右栏「服务器」面板默认展开的服数量，其余折叠）。
+`gtmc_rename_cooldown_days`、`gtmc_heartbeat_timeout_seconds`（默认 90）、`gtmc_servers`、`gtmc_rail_visible_servers`（默认 3，右栏「服务器」面板默认展开的服数量，其余折叠）、`gtmc_announcement_category`（右栏「公告」面板读的版块，由 `infra/discourse/sidebar.rb` 写入）。
 
 `gtmc_servers` 登记所有服，每项六个字段：`server_id`、`name`（展示名，如「生存服」）、`icon`（图标名，`gtmc-` 开头的主题像素图标或 Font Awesome 图标）、`color`（图标颜色，`#RRGGBB` 格式，可空，空则用主题强调色）、`address`（玩家连接用的地址，展示用）、
 `map_url`（可空，空则不显示地图入口；`status.json` 里空的 `map_url` 返回 `null`）。优先用 Discourse 的 `type: objects` 结构化设置（带 schema）；
@@ -397,6 +397,7 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 右栏「服务器」面板，渲染进 `gtmc-right-rail`：标题旁的刷新倒计时圆环（周期取 `refresh_interval_seconds`，不写死）、在线总人数、
   每服一行固定两行高（图标块含状态角标、服名、版本标签、人数；头像叠 5 个 + `+N`，没人时占位文字；右下复制地址的正方形按钮），
   超过 `gtmc_rail_visible_servers` 的折叠，「+N ⌄」展开。原首页顶部的服务器卡片删掉。
+- 右栏「公告」面板：「公告」版块最新 3 个话题（置顶在前，去掉版块的「关于」帖），排在「服务器」之后。
 - 右栏「新人进服」面板：注册、读新人指南（读过置顶的新人指南帖即算）、绑定游戏名、输入登录码四步；后两步在 P2/P3 完成前恒为未完成。全部完成后面板不再出现。
 - 右栏「近期活动」面板：读 `discourse-events` 的活动数据，日期块 48×48。
 - 手机：右栏面板改为首页顶部的横向服务器状态条 + 新人进度卡（只显示下一步），见 `c-mobile-home.html`。
