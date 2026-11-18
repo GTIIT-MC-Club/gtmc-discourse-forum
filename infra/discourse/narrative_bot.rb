@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# 引导机器人初始化，可重复执行：核心自带的 discourse-narrative-bot 插件里那个教新人用论坛的机器人
+# 新站的引导机器人：核心自带的 discourse-narrative-bot 插件里那个教新人用论坛的机器人
 # （原名 discobot）改名、换头像、改简介，新用户教程的台词换成社团口吻，教程末尾引导去「白名单与申诉」和「新人指南」。
-# 名字、头像、台词都以仓库为准，在后台改了，重跑本脚本会被改回来。
+# 只在新站初始化时执行一次（infra/deploy-discourse.sh 按数据库里的初始化标记判断），之后这些设置归后台管理，
+# 再部署不会覆盖；要备份或回档见 CONFIGURATION.md。
 #
 # 机器人叫「小火把」，用户名 gtmc_torch：通用物品，不牵扯 Mojang 商标。
 # 用户名也改了，不只是显示名：论坛默认只显示用户名（display_name_on_posts 为 false），
@@ -12,7 +13,6 @@
 # 必须在下面两件事之后执行，缺了会直接报错退出：
 #   1. infra/discourse/site_settings.rb 已执行；
 #   2. infra/discourse/sidebar.rb 已执行（教程末尾的链接取自它写进主题设置的两个地址）。
-# 发了「新人指南」置顶帖之后要重跑 sidebar.rb 和本脚本，教程里的链接才会从版块改成帖子。
 #
 # 由 infra/deploy-discourse.sh 调用（它把整个 infra/ 复制进容器）。
 #

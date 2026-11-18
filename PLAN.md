@@ -82,7 +82,7 @@ GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教�
 |---|---|---|
 | `gtmc-forum-infra`（本仓库） | `PLAN.md`、`AGENTS.md`、部署脚本和配置（`infra/`）、MC 端（`mc-plugin/`）、设计稿（`design/`），以后的 `bridge/` | 在论坛虚拟机上检出，`infra/deploy-discourse.sh` 部署 |
 | `gtmc-forum-plugin` | Discourse 插件 `discourse-gtmc`，Ruby + Ember，仓库根目录就是插件根目录 | `app.yml` 的 `after_code` 钩子把它克隆进容器的 `plugins/discourse-gtmc`，重建容器生效 |
-| `gtmc-forum-theme` | Discourse 主题 GTMC，仓库根目录就是主题根目录（`about.json` 在根上）；图标精灵 `assets/gtmc-icons.svg` 由仓库里的脚本从 `icons/` 生成并提交 | `infra/discourse/import_theme.rb` 用核心的远程主题从 Git 安装或更新，并设为默认主题、设配色 |
+| `gtmc-forum-theme` | Discourse 主题 GTMC，仓库根目录就是主题根目录（`about.json` 在根上）；图标精灵 `assets/gtmc-icons.svg` 由仓库里的脚本从 `icons/` 生成并提交 | `infra/discourse/import_theme.rb` 用核心的远程主题从 Git 安装或更新；第一次安装时设为默认主题、设配色 |
 | `gtmc-forum-wiki` | 新手教程（Markdown，一篇一个话题），文件在仓库根目录；`README.md` 是写作约定，不同步 | `deploy-discourse.sh` 在论坛虚拟机上克隆或拉取它，交给 `infra/discourse/guides.rb` 同步成「新人指南」的锁定话题 |
 
 插件内部的名字不变：插件名 `discourse-gtmc`、站点设置前缀 `gtmc_`、装在 `plugins/discourse-gtmc`。
@@ -92,12 +92,16 @@ GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教�
 
 ```
 infra/
-  discourse/                  容器配置（app.yml、app.internal.yml）和站点脚本（site_settings.rb、import_theme.rb、
-                              sidebar.rb、badges.rb、narrative_bot.rb、guides.rb）
-  content/                    置顶帖、引导机器人文案、管理员操作手册 admin-setup.md
+  discourse/                  容器配置（app.yml、app.internal.yml）、新站初始化脚本（site_settings.rb、
+                              import_theme.rb、sidebar.rb、badges.rb、narrative_bot.rb）、教程同步 guides.rb、
+                              设置导出 export_config.rb
+  content/                    置顶帖、引导机器人文案、新站初始化手册 admin-setup.md
   frp/ caddy/ systemd/        入口和隧道
   deploy-discourse.sh         一键部署到论坛虚拟机
+  export-forum-config.sh      把论坛设置导出到 forum-config/
   README.md                   部署手册
+forum-config/                 论坛设置的备份（导出生成，不手改），见 CONFIGURATION.md
+CONFIGURATION.md              论坛的配置在哪里：代码归仓库、设置归论坛，备份和回档
 mc-plugin/                    MC 端接入，Gradle 多项目（第一期起）
   common/                     与平台无关的逻辑：论坛 API 客户端、心跳、进服判定、冻结状态机。
                               只依赖 JDK 和 Gson，编译目标 Java 17（Fabric/Forge 的 1.20.x 服跑在 Java 17 上）

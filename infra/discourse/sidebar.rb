@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
-# 侧边栏与版块外观初始化，可重复执行：版块顺序和图标、全站默认侧边栏版块、「社区」区的链接、
+# 新站的侧边栏与版块外观：版块顺序和图标、全站默认侧边栏版块、「社区」区的链接、
 # 删除核心自带的 General 和 Site Feedback 版块、把页脚的站内链接写进 GTMC 主题的设置。
+# 只在新站初始化时执行一次（infra/deploy-discourse.sh 按数据库里的初始化标记判断），之后这些设置归后台管理，
+# 再部署不会覆盖；要备份或回档见 CONFIGURATION.md。
 #
 # 必须在下面两件事之后执行，缺了会直接报错退出：
 #   1. infra/discourse/site_settings.rb 已执行（版块由它创建，这里按名字查找）；
@@ -13,7 +15,6 @@
 # 还会把「公告」版块写进 discourse-gtmc 插件的 gtmc_announcement_category（右栏公告面板读它），
 # 所以插件也要已安装。
 #
-# 版块名、图标名、链接都以这里为准。在后台改了侧边栏或版块顺序，重跑本脚本会被改回来。
 
 THEME_NAME = "GTMC"
 
@@ -33,8 +34,6 @@ CATEGORY_ICONS = [
 ANNOUNCEMENT_CATEGORY_NAME = "公告"
 APPEAL_CATEGORY_NAME = "白名单与申诉"
 NEWCOMER_GUIDE_CATEGORY_NAME = "新人指南"
-# 置顶帖「新人指南」的标题以此开头（infra/content/newcomer-guide.md 的一级标题），发在同名版块里
-NEWCOMER_GUIDE_TITLE_PREFIX = "新人指南"
 
 # 核心自带、本站不用的版块，按核心记录它们的站点设置查找，不按名字（名字随安装时的语言变化）。
 # Site Feedback 每次 rebuild 时都会被核心的种子数据重置权限（seed_data/categories.rb 的 force_permissions），
@@ -46,24 +45,6 @@ SEEDED_CATEGORY_SETTINGS_TO_DELETE = %w[general_category_id meta_category_id]
 def find_category!(name)
   Category.find_by(name: name) ||
     abort("category #{name} not found; run infra/discourse/site_settings.rb first")
-end
-
-def newcomer_guide_url(guide_category)
-  guide_topic =
-    Topic
-      .listable_topics
-      .where(category_id: guide_category.id)
-      .where("title LIKE ?", "#{NEWCOMER_GUIDE_TITLE_PREFIX}%")
-      .order(:id)
-      .first
-
-  if guide_topic
-    guide_topic.relative_url
-  else
-    # 帖子还没发（或还在公告版块没移过来）：先指向版块，发帖后重跑本脚本就会改成帖子地址
-    puts "newcomer guide topic not found in #{guide_category.name}; linking to the category for now"
-    guide_category.url
-  end
 end
 
 # 「社区」区（核心的 section_type community）。segment primary 直接显示，secondary 收在「更多」里。
@@ -143,7 +124,7 @@ def delete_seeded_category(setting_name)
   user_topic_count =
     Topic.where(category_id: category.id).where.not(id: [category.topic_id, welcome_topic&.id]).count
   if user_topic_count > 0
-    # 有真人发的帖子就不删，免得连带丢内容。先在后台把帖子移到别的版块，再重跑本脚本。
+    # 有真人发的帖子就不删，免得连带丢内容。打印出来后由管理员在后台把帖子移走、再删掉这个版块。
     puts "kept category #{category.name}: it still has #{user_topic_count} topics; move them out and re-run"
     return
   end
@@ -223,7 +204,7 @@ def apply_community_section(links)
   puts "updated community sidebar section: #{links.map { |link| link[:name] }.join(", ")}"
 end
 
-# 页脚的「新人指南」指向置顶帖（还没发时指向同名版块），「白名单与申诉」指向版块。地址带数据库 id，主题里没法写死，所以由这里写入。
+# 页脚的「新人指南」「白名单与申诉」都指向版块（「新人指南」版块里置顶的是教程目录）。地址带数据库 id，主题里没法写死，所以由这里写入。
 def apply_footer_settings(theme, footer_urls)
   footer_urls.each do |setting_name, url|
     if theme.settings[setting_name].value == url
@@ -240,7 +221,6 @@ end
 theme = gtmc_theme!
 gtmc_categories = CATEGORY_ICONS.map { |name, _icon| find_category!(name) }
 announcement_category = find_category!(ANNOUNCEMENT_CATEGORY_NAME)
-guide_url = newcomer_guide_url(find_category!(NEWCOMER_GUIDE_CATEGORY_NAME))
 links = community_links
 
 assert_icons_in_sprite!(theme, CATEGORY_ICONS.map(&:last) + links.map { |link| link[:icon] })
@@ -261,7 +241,7 @@ apply_announcement_panel_category(announcement_category)
 apply_community_section(links)
 apply_footer_settings(
   theme,
-  footer_newcomer_guide_url: guide_url,
+  footer_newcomer_guide_url: find_category!(NEWCOMER_GUIDE_CATEGORY_NAME).url,
   footer_appeal_url: find_category!(APPEAL_CATEGORY_NAME).url,
 )
 

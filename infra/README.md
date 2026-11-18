@@ -1,7 +1,8 @@
 # infra 部署手册
 
 本文件是 `infra/` 下各配置文件的部署步骤，对应 `PLAN.md` 第 5 节的 I1、I2、I3。
-写代码的规范见 `AGENTS.md`，这里只管「在哪台机器上按什么顺序敲什么命令」。
+写代码的规范见 `AGENTS.md`，论坛设置归谁管、怎么备份和回档见 `CONFIGURATION.md`，
+这里只管「在哪台机器上按什么顺序敲什么命令」。
 
 没在真机上执行过的步骤和配置项，在所在小节里用「未验证：」开头的一行标出，执行后把结论补进正文、删掉那一行。
 
@@ -334,12 +335,13 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
 
 这个脚本做四件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
 （内容没变就不重建容器，重建有停机；插件 `gtmc-forum-plugin` 由 `app.yml` 的钩子在重建时克隆）
-→ 在本仓库旁边克隆或拉取教程仓库（`~/gtmc-forum-wiki`）→ 按 `infra/content/admin-setup.md` 的顺序
-在容器里跑完六个配置脚本（其中 `import_theme.rb` 让容器从 GitHub 安装主题 `gtmc-forum-theme`）。
+→ 在本仓库旁边克隆或拉取教程仓库（`~/gtmc-forum-wiki`）→ 从 GitHub 更新主题 `gtmc-forum-theme`、同步教程。
+新站第一次部署时还会先跑一遍初始化脚本，把论坛设成社团的出厂设置；之后论坛设置归后台管理，部署不再改它们
+（见仓库根目录的 `CONFIGURATION.md`）。
 
-脚本可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
+脚本可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传（只在初始化时用到），
 否则 `force_https` 打开后全站 301 到 https:// 而那个端口没有 TLS。
-域名和 Caddy 就绪后去掉 `GTMC_APP_TEMPLATE` 与 `GTMC_FORCE_HTTPS` 再跑一次即可。
+域名和 TLS 就绪后到后台打开 `force_https`，部署时去掉 `GTMC_APP_TEMPLATE`。
 
 **内网阶段的第一个管理员**：邮件是关着的，网页注册的账号收不到激活信、登不进去，
 所以第一个管理员在容器里直接建（建出来就是已激活的），之后用它在后台给别人改权限：

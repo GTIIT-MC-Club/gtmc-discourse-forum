@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
-# 站点设置与版块初始化，可重复执行。
+# 新站的站点设置和版块。
+# 只在新站初始化时执行一次（infra/deploy-discourse.sh 按数据库里的初始化标记判断），之后这些设置归后台管理，
+# 再部署不会覆盖；要备份或回档见 CONFIGURATION.md。
 # 设置名写错会直接报错退出，不会静默跳过。设置名以当前版本 config/site_settings.yml 为准。
-# 由 infra/deploy-discourse.sh 调用。
+# 已经存在的同名版块不动，所以初始化中途失败后重跑是安全的。
 #
 # force_https 由环境变量 GTMC_FORCE_HTTPS 控制，默认 true。
 # 在还没有 TLS 的阶段（只有内网地址、或 VPS 与域名还没到位）要用 false 跑，
 # 否则全站会 301 到 https://，而那个端口上没有 TLS，谁都打不开：
-#   docker exec -e GTMC_FORCE_HTTPS=false -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/site_settings.rb
-# 域名和 Caddy 就绪后重跑一次（不带这个变量）把它改回 true。
+#   sudo GTMC_FORCE_HTTPS=false infra/deploy-discourse.sh
+# 域名和 TLS 就绪后到后台把 force_https 打开。
 
 SETTINGS = {
   title: "GTMC 论坛",
@@ -110,8 +111,6 @@ end
 
 # 版块。permissions 为 nil 表示所有人可见；否则按用户组限制。
 # topic_template 是发帖时预填进正文的模板，topic_title_placeholder 是标题框里的灰字提示。
-# previous_names 是这个版块用过的旧名：脚本按名字找版块，找不到就新建，
-# 所以改名时要把旧名留在这里，已有的站才会原地改名，而不是多出一个空版块、帖子留在旧的那个里。
 CATEGORIES = [
   {
     name: "公告",
@@ -146,7 +145,6 @@ CATEGORIES = [
   },
   {
     name: "技术开发",
-    previous_names: ["红石与技术"],
     color: "D0312D",
     desc: "红石、生电、命令与数据包，模组和插件开发",
     topic_title_placeholder: "例如「刷铁机效率上不去」「Fabric 模组怎么加新方块」",
@@ -158,7 +156,6 @@ CATEGORIES = [
   },
   {
     name: "资源分享",
-    previous_names: ["模组与资源"],
     color: "8E5BD9",
     desc: "模组、光影、材质包推荐与整合包",
     topic_title_placeholder: "名字 + 版本，例如「Sodium 1.21.1」",
@@ -217,6 +214,8 @@ def create_category(spec)
     color: spec[:color],
     text_color: "FFFFFF",
     description: spec[:desc],
+    topic_template: spec[:topic_template],
+    topic_title_placeholder: spec[:topic_title_placeholder],
   )
   category.set_permissions(spec[:permissions]) if spec[:permissions]
   category.save!
@@ -224,56 +223,12 @@ def create_category(spec)
   category
 end
 
-# 模板写在脚本里而不是后台，重跑脚本就能把模板改回来；
-# 所以已存在的版块也要比对一次，不一致就覆盖。
-def apply_topic_template(category, spec)
-  template_changed = category.topic_template != spec[:topic_template]
-  title_placeholder_changed = category.topic_title_placeholder != spec[:topic_title_placeholder]
-  unless template_changed || title_placeholder_changed
-    puts "category #{category.name} template is up to date"
-    return
-  end
-
-  category.topic_template = spec[:topic_template]
-  category.topic_title_placeholder = spec[:topic_title_placeholder]
-  category.save!
-  puts "updated template of category #{category.name}"
-end
-
-# 版块简介存在版块的「关于」话题首帖里，核心在这篇帖子被修改时同步 categories.description，
-# 所以要改帖子而不是直接写 description。简介也以本文件为准，在后台改了会被改回来。
-def apply_category_description(category, spec)
-  about_post = category.topic.first_post
-  if about_post.raw.strip == spec[:desc]
-    puts "category #{category.name} description is up to date"
-    return
-  end
-
-  if about_post.last_editor_id != Discourse.system_user.id
-    puts "warning: description of category #{category.name} was last edited by user #{about_post.last_editor_id} on the forum; overwriting it with the repository version"
-  end
-  revised = about_post.revise(Discourse.system_user, { raw: spec[:desc] }, bypass_bump: true)
-  abort "updating description of category #{category.name} failed: #{about_post.errors.full_messages.join(", ")}" unless revised
-  puts "updated description of category #{category.name}"
-end
-
-# 只改名字：版块的 id 和地址（slug）不变，帖子、关注、侧边栏里的版块都跟着走。
-def rename_category_from_previous_name(spec)
-  return if spec[:previous_names].blank?
-
-  category = Category.find_by(name: spec[:previous_names])
-  return if category.nil?
-
-  previous_name = category.name
-  category.update!(name: spec[:name])
-  puts "renamed category #{previous_name} to #{spec[:name]}"
-  category
-end
-
 CATEGORIES.each do |spec|
-  category =
-    Category.find_by(name: spec[:name]) || rename_category_from_previous_name(spec) ||
-      create_category(spec)
-  apply_category_description(category, spec)
-  apply_topic_template(category, spec)
+  existing_category = Category.find_by(name: spec[:name])
+  if existing_category
+    puts "category #{spec[:name]} already exists; kept as is"
+    next
+  end
+
+  create_category(spec)
 end

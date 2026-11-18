@@ -1,17 +1,11 @@
 # frozen_string_literal: true
 
-# 从 Git 安装或更新 GTMC 主题，可重复执行：安装或更新、设为默认主题、配色跟随系统。
-#   - 主题来自 gtmc-forum-theme 仓库的默认分支，用核心的远程主题（RemoteTheme）安装，
-#     后台「外观 → 主题」能看到版本、检查更新；
-#   - 浅色配色设为 GTMC Light，深色配色设为 GTMC Dark（访客的系统是深色模式时自动用后者）；
-#   - 两套配色都允许用户在「界面」偏好里自选。
-# 主题已存在时原地更新，不会新建第二个 GTMC；更新不会改动后台里设过的主题设置（如 discord_invite_url）。
-# 以前用压缩包导入的 GTMC 主题会原地改成远程主题，id 和主题设置都不变。
+# 从 gtmc-forum-theme 仓库安装或更新 GTMC 主题（核心的远程主题 RemoteTheme，后台「外观 → 主题」能看到版本）。
+# 主题代码每次部署都更新，主题设置（如 discord_invite_url）不受影响。
+# 第一次安装时还会设成默认主题、浅色配色 GTMC Light、深色配色 GTMC Dark、两套配色允许用户自选；
+# 这些是论坛设置，之后归后台管理，本脚本不再改（见 CONFIGURATION.md）。
 #
 # 由 infra/deploy-discourse.sh 调用（容器要能连上 github.com，核心在容器里执行 git clone）。
-#
-# 执行顺序见 infra/content/admin-setup.md：必须在 site_settings.rb 之后。
-# 每次执行都会从 GitHub 重新拉一遍主题，导入本身是幂等的，结果相同。
 
 THEME_NAME = "GTMC"
 # 写成核心存进 remote_themes.remote_url 的样子（GitUrl.normalize 给 GitHub 地址补 .git），才能直接比较
@@ -34,21 +28,6 @@ def install_theme
   theme
 end
 
-# 压缩包导入的主题可能没有 RemoteTheme 记录，也可能有一条 remote_url 为空的。两种都在原主题上补上仓库地址
-# 再从远程更新，和核心后台「更换来源」（Admin::ThemesController#update_source）是同一个做法：
-# 主题 id 不变，所以 theme_settings 里的值、默认主题、用户选的主题都保留。
-# 放进事务：克隆或导入失败时连仓库地址一起回滚，主题仍是原来的压缩包版本。
-def convert_to_remote_theme(theme)
-  remote_theme = theme.remote_theme || theme.build_remote_theme
-  remote_theme.transaction do
-    remote_theme.remote_url = THEME_REPOSITORY_URL
-    remote_theme.branch = nil
-    remote_theme.update_from_remote(already_in_transaction: true, raise_on_import_error: true)
-    theme.save!
-  end
-  puts "converted theme #{theme.name} (id #{theme.id}) to a remote theme from #{THEME_REPOSITORY_URL}"
-end
-
 # 不传 raise_on_import_error 时核心把克隆失败记在 last_error_text 里、照常返回，这里要它直接报错
 def update_remote_theme(theme)
   remote_theme = theme.remote_theme
@@ -66,15 +45,12 @@ def install_or_update_theme
   return install_theme if theme.nil?
 
   remote_url = theme.remote_theme&.remote_url
-  if remote_url.blank?
-    convert_to_remote_theme(theme)
-  elsif remote_url == THEME_REPOSITORY_URL
-    update_remote_theme(theme)
-  else
-    # 别的仓库装的同名主题不是我们能判断的情况，分不清就不动
-    abort "theme #{THEME_NAME} (id #{theme.id}) is installed from #{remote_url}, " \
+  # 别的来源装的同名主题不是我们能判断的情况，分不清就不动
+  if remote_url != THEME_REPOSITORY_URL
+    abort "theme #{THEME_NAME} (id #{theme.id}) is installed from #{remote_url.presence || "a zip file"}, " \
             "not #{THEME_REPOSITORY_URL}; change its source in the admin or delete it first"
   end
+  update_remote_theme(theme)
   theme
 rescue RemoteTheme::ImportError => error
   abort "theme import from #{THEME_REPOSITORY_URL} failed: #{error.message}"
@@ -130,14 +106,16 @@ def apply_color_schemes(theme, light_scheme, dark_scheme)
   puts "set theme color schemes: light = #{light_scheme.name}, dark = #{dark_scheme.name}"
 end
 
+first_install = existing_gtmc_theme.nil?
 theme = install_or_update_theme
-
 assert_theme_compiled!(theme)
 
-light_scheme = find_color_scheme!(theme, LIGHT_COLOR_SCHEME_NAME)
-dark_scheme = find_color_scheme!(theme, DARK_COLOR_SCHEME_NAME)
+if first_install
+  light_scheme = find_color_scheme!(theme, LIGHT_COLOR_SCHEME_NAME)
+  dark_scheme = find_color_scheme!(theme, DARK_COLOR_SCHEME_NAME)
 
-apply_default_theme(theme)
-allow_users_to_select(light_scheme)
-allow_users_to_select(dark_scheme)
-apply_color_schemes(theme, light_scheme, dark_scheme)
+  apply_default_theme(theme)
+  allow_users_to_select(light_scheme)
+  allow_users_to_select(dark_scheme)
+  apply_color_schemes(theme, light_scheme, dark_scheme)
+end
