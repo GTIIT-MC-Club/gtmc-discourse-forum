@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
 # 站点设置与版块初始化，可重复执行。
-# 用法（在自有机器上）：
-#   docker cp site_settings.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/site_settings.rb
 # 设置名写错会直接报错退出，不会静默跳过。设置名以当前版本 config/site_settings.yml 为准。
+# 由 infra/deploy-discourse.sh 调用。
 #
 # force_https 由环境变量 GTMC_FORCE_HTTPS 控制，默认 true。
 # 在还没有 TLS 的阶段（只有内网地址、或 VPS 与域名还没到位）要用 false 跑，
@@ -17,7 +15,6 @@ SETTINGS = {
   title: "GTMC 论坛",
   site_description: "广东以色列理工学院 Minecraft 社团",
   default_locale: "zh_CN",
-  # 没有 TLS 的阶段用 GTMC_FORCE_HTTPS=false 跑，见文件头。
   force_https: ENV.fetch("GTMC_FORCE_HTTPS", "true") == "true",
 
   # 准入：仅校园邮箱可注册，游客只读公开版块
@@ -279,7 +276,9 @@ end
 
 # 只改名字：版块的 id 和地址（slug）不变，帖子、关注、侧边栏里的版块都跟着走。
 def rename_category_from_previous_name(spec)
-  category = Category.find_by(name: spec.fetch(:previous_names, []))
+  return if spec[:previous_names].blank?
+
+  category = Category.find_by(name: spec[:previous_names])
   return if category.nil?
 
   previous_name = category.name

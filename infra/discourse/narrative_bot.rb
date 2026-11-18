@@ -4,8 +4,7 @@
 # （原名 discobot）改名、换头像、改简介，新用户教程的台词换成社团口吻，教程末尾引导去「白名单与申诉」和「新人指南」。
 # 名字、头像、台词都以仓库为准，在后台改了，重跑本脚本会被改回来。
 #
-# 机器人叫「小火把」，用户名 gtmc_torch：火把给下矿的人照路，正好对应「给新人引路」；
-# 它是通用物品，不是 Mojang 的角色，也不会和 Minecraft 的商标搅在一起。
+# 机器人叫「小火把」，用户名 gtmc_torch：通用物品，不牵扯 Mojang 商标。
 # 用户名也改了，不只是显示名：论坛默认只显示用户名（display_name_on_posts 为 false），
 # 只改显示名的话，帖子和私信里看到的还是 discobot。插件里提及、触发词、证书都按用户名动态取，改名不会让它们失效。
 # 结业证书的图片模板不动，证书上机器人的署名因此变成新用户名。
@@ -15,12 +14,9 @@
 #   2. infra/discourse/sidebar.rb 已执行（教程末尾的链接取自它写进主题设置的两个地址）。
 # 发了「新人指南」置顶帖之后要重跑 sidebar.rb 和本脚本，教程里的链接才会从版块改成帖子。
 #
-# 用法（在自有机器上）：脚本要读 infra/content/narrative-bot/ 下的台词和头像，所以把整个 infra/ 复制进容器：
-#   docker cp infra app:/tmp/gtmc-infra && docker exec -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/gtmc-infra/discourse/narrative_bot.rb
+# 由 infra/deploy-discourse.sh 调用（它把整个 infra/ 复制进容器）。
 #
 # 只覆盖中文（zh_CN）的台词，界面语言是英文的用户仍看到插件自带的英文。
-# 改过台词后，已经走到一半的用户下一步才会看到新文字；重新开始教程的用户从头看到新文字。
 
 require "digest"
 require "tempfile"
@@ -96,11 +92,6 @@ def apply_avatar(bot)
       UploadCreator.new(copy, filename, type: "avatar").create_for(bot.id)
     end
   abort "avatar upload failed: #{upload.errors.full_messages.join(", ")}" unless upload.persisted?
-
-  if bot.uploaded_avatar_id == upload.id
-    puts "bot avatar is up to date"
-    return
-  end
 
   UserAvatar.pick_for_user!(bot, upload.id, type: :custom)
   puts "set bot avatar = upload #{upload.id} (#{filename})"

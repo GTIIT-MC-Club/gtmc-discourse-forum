@@ -8,7 +8,7 @@ import org.gtmc.common.HeartbeatPayload;
 import org.gtmc.common.InvalidSettingsException;
 import org.gtmc.common.PluginSettings;
 
-/** GTMC Paper 插件入口。M1 只负责定时把服务器状态上报给论坛。 */
+/** 插件入口：定时把服务器状态上报给论坛。 */
 public final class GtmcPlugin extends JavaPlugin {
 
   private static final long TICKS_PER_SECOND = 20;

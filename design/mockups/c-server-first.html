@@ -67,15 +67,12 @@ header.top { display: flex; align-items: center; gap: 16px; height: 56px; paddin
 .srv:first-of-type { border-top: 0; }
 .srv .name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .srv .count { font-variant-numeric: tabular-nums; }
-/* 第三列统一右对齐：人数和复制按钮的右边缘对齐 */
 .srv .count { justify-self: end; }
-/* 只有图标的按钮一律正方形；复制按钮平时只是一个淡灰图标，悬停这一行时才显出来，点到时才有底色 */
 .srv .copy-addr { grid-column: 3; grid-row: 2; justify-self: end; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
   color: color-mix(in srgb, var(--muted) 70%, transparent); }
 .srv:hover .copy-addr { color: var(--muted); }
 .srv .copy-addr:hover { background: var(--accent-soft); color: var(--accent); }
 .srv .copy-addr .ico { width: 16px; height: 16px; }
-/* 没人在线时头像行放一句占位文字，行高不变 */
 .faces .nobody { font-size: 12px; color: var(--muted); }
 .srv.collapsed { display: none; }
 .servers.expanded .srv.collapsed { display: grid; }
@@ -166,7 +163,7 @@ footer b { color: var(--text); font-weight: 600; }
   <a class="side-item"><svg class="ico" aria-hidden="true"><use href="#gtmc-medal"/></svg><span>徽章</span></a>
   <a class="side-item"><svg class="ico" aria-hidden="true"><use href="#gtmc-players"/></svg><span>成员</span></a>
   <div class="side-heading">版块</div>
-  <a class="side-item" style="--cat:#E45735"><svg class="ico" aria-hidden="true"><use href="#gtmc-sign"/></svg><span>公告</span></a><a class="side-item" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg><span>活动</span></a><a class="side-item" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg><span>建筑展示</span></a><a class="side-item" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg><span>红石与技术</span></a><a class="side-item" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg><span>模组与资源</span></a><a class="side-item" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg><span>白名单与申诉</span></a><a class="side-item" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg><span>水吧</span></a><a class="side-item" style="--cat:#B3923A"><svg class="ico" aria-hidden="true"><use href="#gtmc-crown"/></svg><span>老玩家俱乐部</span></a>
+  <a class="side-item" style="--cat:#E45735"><svg class="ico" aria-hidden="true"><use href="#gtmc-sign"/></svg><span>公告</span></a><a class="side-item" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg><span>活动</span></a><a class="side-item" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg><span>建筑展示</span></a><a class="side-item" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg><span>技术开发</span></a><a class="side-item" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg><span>资源分享</span></a><a class="side-item" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg><span>白名单与申诉</span></a><a class="side-item" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg><span>水吧</span></a><a class="side-item" style="--cat:#B3923A"><svg class="ico" aria-hidden="true"><use href="#gtmc-crown"/></svg><span>老玩家俱乐部</span></a>
 </nav>
   <main>
     <div class="toolbar"><a class="tab active">最新</a><a class="tab">热门</a><a class="tab">未读</a><a class="tab">版块</a><a class="btn">＋ 新建话题</a></div>
@@ -180,7 +177,7 @@ footer b { color: var(--text); font-weight: 600; }
         <div class="sub"><span class="cat" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg>建筑展示</span><span class="author"><span class="avatar" style="--avatar:#3AB7C4">P</span>Pixel_Nan</span></div></div>
         <div class="num">23</div><div class="num">58</div><div class="num">35 分钟</div></a>
       <a class="row"><div><div class="title">1.21 可用的全自动甘蔗农场，每小时 2.4k</div>
-        <div class="sub"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>红石与技术</span><span class="author"><span class="avatar" style="--avatar:#E45735">R</span>redstone_lin</span></div></div>
+        <div class="sub"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>技术开发</span><span class="author"><span class="avatar" style="--avatar:#E45735">R</span>redstone_lin</span></div></div>
         <div class="num">11</div><div class="num">19</div><div class="num">1 小时</div></a>
       <a class="row"><div><div class="title">第三届建筑大赛开始报名：主题「海港」</div>
         <div class="sub"><span class="cat" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg>活动</span><span class="author"><span class="avatar" style="--avatar:#8E5BD9">G</span>GTMC 社团</span></div></div>
@@ -189,7 +186,7 @@ footer b { color: var(--text); font-weight: 600; }
         <div class="sub"><span class="cat" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg>白名单与申诉</span><span class="author"><span class="avatar" style="--avatar:#F2A33A">M</span>MapleZhou</span></div></div>
         <div class="num">2</div><div class="num">3</div><div class="num">5 小时</div></a>
       <a class="row"><div><div class="title">推荐几个不影响平衡的客户端模组</div>
-        <div class="sub"><span class="cat" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg>模组与资源</span><span class="author"><span class="avatar" style="--avatar:#D0312D">K</span>kyouka</span></div></div>
+        <div class="sub"><span class="cat" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg>资源分享</span><span class="author"><span class="avatar" style="--avatar:#D0312D">K</span>kyouka</span></div></div>
         <div class="num">15</div><div class="num">26</div><div class="num">8 小时</div></a>
       <a class="row"><div><div class="title">期末周还有人上线吗</div>
         <div class="sub"><span class="cat" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg>水吧</span><span class="author"><span class="avatar" style="--avatar:#92A1A8">D</span>dove_w</span></div></div>

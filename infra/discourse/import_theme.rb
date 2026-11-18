@@ -8,13 +8,10 @@
 # 主题已存在时原地更新，不会新建第二个 GTMC；更新不会改动后台里设过的主题设置（如 discord_invite_url）。
 # 以前用压缩包导入的 GTMC 主题会原地改成远程主题，id 和主题设置都不变。
 #
-# 用法（在论坛虚拟机上；容器要能连上 github.com，核心在容器里执行 git clone）：
-#   docker cp infra/discourse/import_theme.rb app:/tmp/ && \
-#     docker exec -u discourse -w /var/www/discourse app bundle exec rails runner /tmp/import_theme.rb
-# 本机开发站：在 Discourse 源码目录执行 bin/rails runner <仓库>/infra/discourse/import_theme.rb
+# 由 infra/deploy-discourse.sh 调用（容器要能连上 github.com，核心在容器里执行 git clone）。
 #
-# 执行顺序见 infra/content/admin-setup.md：site_settings.rb → 本脚本 → sidebar.rb → badges.rb → narrative_bot.rb。
-# 每次执行都会从 GitHub 重新拉一遍主题（导入本身是幂等的，结果相同）。主题合并到 main 后重跑即可上线。
+# 执行顺序见 infra/content/admin-setup.md：必须在 site_settings.rb 之后。
+# 每次执行都会从 GitHub 重新拉一遍主题，导入本身是幂等的，结果相同。
 
 THEME_NAME = "GTMC"
 # 写成核心存进 remote_themes.remote_url 的样子（GitUrl.normalize 给 GitHub 地址补 .git），才能直接比较

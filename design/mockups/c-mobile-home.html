@@ -67,15 +67,12 @@ header.top { display: flex; align-items: center; gap: 16px; height: 56px; paddin
 .srv:first-of-type { border-top: 0; }
 .srv .name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .srv .count { font-variant-numeric: tabular-nums; }
-/* 第三列统一右对齐：人数和复制按钮的右边缘对齐 */
 .srv .count { justify-self: end; }
-/* 只有图标的按钮一律正方形；复制按钮平时只是一个淡灰图标，悬停这一行时才显出来，点到时才有底色 */
 .srv .copy-addr { grid-column: 3; grid-row: 2; justify-self: end; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
   color: color-mix(in srgb, var(--muted) 70%, transparent); }
 .srv:hover .copy-addr { color: var(--muted); }
 .srv .copy-addr:hover { background: var(--accent-soft); color: var(--accent); }
 .srv .copy-addr .ico { width: 16px; height: 16px; }
-/* 没人在线时头像行放一句占位文字，行高不变 */
 .faces .nobody { font-size: 12px; color: var(--muted); }
 .srv.collapsed { display: none; }
 .servers.expanded .srv.collapsed { display: grid; }
@@ -151,7 +148,6 @@ footer b { color: var(--text); font-weight: 600; }
 .big, .strip .total b { font-size: 36px; }
 .strip .total b { font-size: 24px; }
 
-/* 只有图标的按钮一律正方形 */
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); font-size: 14px; cursor: pointer; }
 .icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
@@ -200,10 +196,10 @@ header.mtop .right { align-items: center; }
 <div class="mlist"><a class="mrow"><div class="title"><span class="pin">置顶</span>本周六 22:00 生存服例行维护（约 1 小时）</div>
       <div class="sub"><span class="cat" style="--cat:#E45735"><svg class="ico" aria-hidden="true"><use href="#gtmc-sign"/></svg>公告</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>4</span><span>2 小时</span></span></div></a><a class="mrow"><div class="title">主城钟楼完工！附 40 张截图和建造思路</div>
       <div class="sub"><span class="cat" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg>建筑展示</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>23</span><span>35 分钟</span></span></div></a><a class="mrow"><div class="title">1.21 可用的全自动甘蔗农场，每小时 2.4k</div>
-      <div class="sub"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>红石与技术</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>11</span><span>1 小时</span></span></div></a><a class="mrow"><div class="title">第三届建筑大赛开始报名：主题「海港」</div>
+      <div class="sub"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>技术开发</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>11</span><span>1 小时</span></span></div></a><a class="mrow"><div class="title">第三届建筑大赛开始报名：主题「海港」</div>
       <div class="sub"><span class="cat" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg>活动</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>37</span><span>3 小时</span></span></div></a><a class="mrow"><div class="title">【申请】MapleZhou 第一次进服</div>
       <div class="sub"><span class="cat" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg>白名单与申诉</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>2</span><span>5 小时</span></span></div></a><a class="mrow"><div class="title">推荐几个不影响平衡的客户端模组</div>
-      <div class="sub"><span class="cat" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg>模组与资源</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>15</span><span>8 小时</span></span></div></a><a class="mrow"><div class="title">期末周还有人上线吗</div>
+      <div class="sub"><span class="cat" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg>资源分享</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>15</span><span>8 小时</span></span></div></a><a class="mrow"><div class="title">期末周还有人上线吗</div>
       <div class="sub"><span class="cat" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg>水吧</span><span class="stat stat-icons"><span><svg class="ico" aria-hidden="true"><use href="#gtmc-bubble"/></svg>41</span><span>12 小时</span></span></div></a></div>
 <a class="fab">＋</a>
 <button class="mode-toggle" onclick="var r=document.documentElement;r.dataset.mode=r.dataset.mode==='dark'?'light':'dark'">切换深浅色</button>

@@ -8,25 +8,13 @@
 # 例如 launcher.md → /wiki/launcher。这个地址顺带成了教程的固定网址，话题改标题、换 slug 都不会变。
 # 不另建表、不用自定义字段：永久链接是核心公开的模型，管理员在后台「永久链接」页能看到和修改。
 #
-# 执行分三步，任何一步发现问题都在写入之前退出：
-#   1. 读入并检查所有文件：front matter、标题不重复、每个指向 .md 的相对链接都能找到对应文件；
-#      并决定每个文件对应哪个话题（已有永久链接 / 认领版块里同名的话题 / 新建）。
-#   2. 新建或认领话题、建永久链接，再把标题改成 front matter 里的标题。
-#      标题要在渲染正文之前改好：话题地址带 slug，slug 跟着标题变。
-#   3. 渲染正文（相对链接换成话题地址，加上「从仓库同步」的页脚），有变化才修订；锁定首帖、取消 wiki；
-#      目录（index.md）在版块内置顶。
+# 检查全部做完才开始写库。必须在 site_settings.rb 之后执行（「新人指南」版块由它创建），
+# 执行顺序见 infra/content/admin-setup.md。
 #
 # 链接换成 /t/<slug>/<id> 而不是 /wiki/<路径>：核心只为指向话题地址的链接建反向链接
 # （被链接的帖子底下显示「谁链接了我」），换成永久链接地址就没有了。
 #
-# 用法（在论坛虚拟机上）：把整个 infra/ 和教程仓库的检出目录复制进容器，教程目录作为参数：
-#   docker cp infra app:/tmp/gtmc-infra && docker cp ../gtmc-forum-wiki app:/tmp/gtmc-forum-wiki && \
-#     docker exec -u discourse -w /var/www/discourse app \
-#       bundle exec rails runner /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-forum-wiki
-# deploy-discourse.sh 会先克隆或拉取教程仓库再这样执行。本机开发站：在 Discourse 源码目录执行
-#   bin/rails runner <本仓库>/infra/discourse/guides.rb <gtmc-forum-wiki 的检出目录>
-#
-# 必须在 site_settings.rb 之后执行（「新人指南」版块由它创建）。执行顺序见 infra/content/admin-setup.md。
+# 由 infra/deploy-discourse.sh 调用（教程仓库的检出目录作为参数）。
 
 require "pathname"
 require "yaml"
@@ -221,7 +209,7 @@ def adoptable_topic!(guide, category, claimed_topic_ids)
   candidates.first
 end
 
-# 第 1 步的一部分：只决定每篇对应哪个话题，不写入
+# 只决定每篇对应哪个话题，不写入
 def plan_topics!(guides, category)
   claimed_topic_ids = guide_permalinks.where.not(topic_id: nil).pluck(:topic_id)
   guides.to_h do |guide|
@@ -279,7 +267,7 @@ def revise_first_post!(guide, post, changes)
   abort "#{guide.source_path}: could not revise post #{post.id}: #{post.errors.full_messages.join(", ")}"
 end
 
-# 第 2 步：返回 { 路径 => 话题 }，以及有改动的教程路径
+# 返回 { 路径 => 话题 }，以及有改动的教程路径
 def ensure_topics!(guides, category, topic_plans)
   changed_paths = Set.new
   topics_by_path =
@@ -337,7 +325,7 @@ def sync_first_post!(guide, topic, raw)
   post = topic.first_post
   changes = {}
   changes[:raw] = raw if post.raw != raw
-  # 设成 wiki 的帖子任何有权限的人都能改，与「仓库为准」矛盾（T6 时首帖曾设成 wiki）
+  # 设成 wiki 的帖子任何有权限的人都能改，与「仓库为准」矛盾
   changes[:wiki] = false if post.wiki
   return false if changes.empty?
 

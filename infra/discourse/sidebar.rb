@@ -8,9 +8,7 @@
 #   2. GTMC 主题已导入（图标来自主题的图标精灵，页脚链接写进主题设置）。
 # 所以单独成一个文件，而不是追加进 site_settings.rb：那个脚本要在导入主题前就能执行。
 #
-# 用法（在自有机器上）：
-#   docker cp sidebar.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
-#     bundle exec rails runner /tmp/sidebar.rb
+# 由 infra/deploy-discourse.sh 调用。
 #
 # 还会把「公告」版块写进 discourse-gtmc 插件的 gtmc_announcement_category（右栏公告面板读它），
 # 所以插件也要已安装。
