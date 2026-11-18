@@ -134,7 +134,7 @@ CATEGORIES = [
       有问题请到「白名单与申诉」发帖，不要在公告下面追问，方便后来的人按标题找到信息。
     TEMPLATE
   },
-  # 新手教程和「新人指南」置顶帖都发在这里。教程由 guides.rb 从仓库同步，首帖锁定（infra/content/guides/README.md）。
+  # 新手教程和「新人指南」置顶帖都发在这里。教程由 guides.rb 从 gtmc-forum-wiki 仓库同步，首帖锁定（见那个仓库的 README.md）。
   # 不预填正文模板：教程的结构因内容而异，硬套模板只会让人每次先删一遍。
   {
     name: "新人指南",

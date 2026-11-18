@@ -287,14 +287,20 @@ HOME$ getent hosts mirrors.bfsu.edu.cn     # 有输出才算好
 → 克隆 `discourse_docker` 到 `/var/discourse` → 克隆本仓库 → 跑一键部署脚本：
 
 ```
-HOME$ git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-discourse.git ~/gtmc-discourse
+HOME$ git clone --depth 1 https://github.com/GTIIT-MC-Club/gtmc-forum-infra.git ~/gtmc-forum-infra
 HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
-        ~/gtmc-discourse/infra/deploy-discourse.sh
+        ~/gtmc-forum-infra/infra/deploy-discourse.sh
 ```
 
-这个脚本做三件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
-（内容没变就不重建容器，重建有停机）→ 按 `infra/content/admin-setup.md` 的顺序
-在容器里跑完五个配置脚本。可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
+这个脚本做四件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
+（内容没变就不重建容器，重建有停机；插件 `gtmc-forum-plugin` 由 `app.yml` 的钩子在重建时克隆）
+→ 在本仓库旁边克隆或拉取教程仓库（`~/gtmc-forum-wiki`）→ 按 `infra/content/admin-setup.md` 的顺序
+在容器里跑完六个配置脚本（其中 `import_theme.rb` 让容器从 GitHub 安装主题 `gtmc-forum-theme`）。
+
+本仓库 2026-11 从 `gtmc-discourse` 改名为 `gtmc-forum-infra`，并拆出了插件、主题、教程三个仓库（PLAN 第 2 节）。
+已经按旧名克隆在 `~/gtmc-discourse` 的检出目录不用重新克隆：GitHub 会把旧地址转到新地址，
+`git remote set-url origin https://github.com/GTIIT-MC-Club/gtmc-forum-infra.git` 改过来即可；
+教程仓库会克隆到它旁边的 `~/gtmc-forum-wiki`。可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
 否则 `force_https` 打开后全站 301 到 https:// 而那个端口没有 TLS。
 域名和 Caddy 就绪后去掉 `GTMC_APP_TEMPLATE` 与 `GTMC_FORCE_HTTPS` 再跑一次即可。
 
@@ -321,8 +327,8 @@ HOME$ sudo install -o root -g root -m 644 app.internal.yml /var/discourse/contai
 HOME$ cd /var/discourse && sudo ./launcher rebuild app
 ```
 
-仓库从 2026-11-18 起是公开的，所以容器里 `hooks.after_code` 的 `git clone` 不需要令牌；
-私有仓库时要换成只读 Deploy Key，不要把 PAT 写进 `app.yml`。
+插件仓库 `gtmc-forum-plugin` 和主题仓库 `gtmc-forum-theme` 都是公开的，所以容器里 `hooks.after_code` 的 `git clone`
+和 `import_theme.rb` 安装主题都不需要令牌；改成私有仓库时要换成只读 Deploy Key，不要把 PAT 写进 `app.yml`。
 
 ## I2.0a 有域名、没有 VPS：用 Cloudflare Tunnel 对外
 
@@ -357,7 +363,7 @@ cloudflared 会带上 `X-Forwarded-Proto: https`，Discourse 据此生成 https 
 
 ```
 HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.<domain> \
-        ~/gtmc-discourse/infra/deploy-discourse.sh
+        ~/gtmc-forum-infra/infra/deploy-discourse.sh
 ```
 
 之后 `http://192.168.2.111:8880` 不再是可用的入口：页面里的链接、登录后的跳转都指向域名，
@@ -695,6 +701,11 @@ HTTP/2 200
   `docker exec app env | grep -i proxy` 确认；不生效就改用 daemon 级代理。
   不要用 `web.china.template.yml` 当备选：它把 github.com 改写到 `mirror.ghproxy.com`，
   那个站不通时 `git fetch` 会无限重试（见 I2.0）。
+- **运行中的容器能否连上 github.com**：拆分仓库（PLAN T8）后，`import_theme.rb` 让容器里的核心在运行时
+  `git clone` 主题仓库，这和重建时的 `--build-arg` 代理不是一条路。I2.0 的直连阶段 github.com 是通的；
+  走 VPS 代理的阶段（I2.1~I2.5）未验证运行中的容器里有没有代理变量，用
+  `docker exec app git ls-remote https://github.com/GTIIT-MC-Club/gtmc-forum-theme.git` 确认。
+  不通时 `import_theme.rb` 报错退出、主题保持原样，后台「外观 → 主题」的「检查更新」同样会失败。
 - **`infra/caddy/Caddyfile` 与 `infra/systemd/*.service` 的语法**：本机没有 caddy 和 systemd，
   未做校验。上真机后按手册里的 `caddy validate` / `systemctl daemon-reload` 通过为准，
   单元文件可用 `systemd-analyze verify frps.service` 再检查一遍。

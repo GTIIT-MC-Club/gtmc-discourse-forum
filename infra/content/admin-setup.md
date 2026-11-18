@@ -13,23 +13,28 @@
 | 顺序 | 脚本 | 做什么 |
 |---|---|---|
 | 1 | `site_settings.rb` | 站点设置、版块和发帖模板、信任等级门槛、自定义状态、引导机器人的欢迎私信开关 |
-| 2 | `import_theme.rb <theme 目录>` | 打包并导入 GTMC 主题、设为默认主题、浅色配色 GTMC Light 和深色配色 GTMC Dark（两套都允许用户自选） |
+| 2 | `import_theme.rb` | 从 GitHub 的 `gtmc-forum-theme` 安装或更新 GTMC 主题（远程主题），设为默认主题、浅色配色 GTMC Light 和深色配色 GTMC Dark（两套都允许用户自选） |
 | 3 | `sidebar.rb` | 版块顺序和图标、默认侧边栏、「社区」区链接、页脚的站内链接 |
 | 4 | `badges.rb` | 「社团成就」分组和四枚社团徽章，核心自带徽章的中文改名 |
 | 5 | `narrative_bot.rb` | 引导机器人改名、头像、简介和教程台词 |
-| 6 | `guides.rb <教程目录>` | 把 `infra/content/guides/` 的教程同步成「新人指南」版块的话题，锁定首帖，目录帖在版块内置顶 |
+| 6 | `guides.rb <教程目录>` | 把 `gtmc-forum-wiki` 仓库里的教程同步成「新人指南」版块的话题，锁定首帖，目录帖在版块内置顶 |
 
 后一个脚本依赖前面的结果，缺了会报错退出，不会只做一半。
-容器里怎么传文件：`import_theme.rb` 要把 `theme/` 目录复制进容器并把容器内路径作为参数，
-`narrative_bot.rb` 和 `guides.rb` 要把整个 `infra/` 复制进容器（`guides.rb` 还要把容器里的教程目录作为参数），
-其余脚本单个文件即可，具体命令见各文件头。
+容器里怎么传文件：`narrative_bot.rb` 和 `guides.rb` 要把整个 `infra/` 复制进容器，`guides.rb` 还要把
+`gtmc-forum-wiki` 的检出目录复制进容器并把容器内路径作为参数（`deploy-discourse.sh` 会先在本仓库旁边克隆或拉取它）；
+其余脚本单个文件即可，具体命令见各文件头。`import_theme.rb` 不需要传主题文件：容器里的核心直接从 GitHub 克隆，
+所以**执行它时容器要能连上 github.com**。连不上时脚本报 `theme import ... failed` 退出，站上的主题保持原样。
+
+插件不由这些脚本管：`app.yml` 的 `after_code` 钩子在重建容器时把 `gtmc-forum-plugin` 克隆进 `plugins/discourse-gtmc`，
+插件合并到 `main` 后重建容器（`deploy-discourse.sh --rebuild`）才会上线。
 
 需要回来重跑的时候：
 
 - **发了「新人指南」置顶帖之后**：重跑 `sidebar.rb`（页脚的「新人指南」才会从版块改成指向帖子），
   再重跑 `narrative_bot.rb`（教程结尾的链接同理）。
-- **改了 `theme/` 之后**：重跑 `import_theme.rb`，每次都会重新导入一遍，结果相同。
-- **改了 `infra/content/guides/` 之后**：重跑 `guides.rb`，只有改过的教程会被修订。
+- **`gtmc-forum-theme` 合并到 `main` 之后**：重跑 `import_theme.rb`，它从 GitHub 拉最新的主题。
+  后台「外观 → 主题」里的「检查更新 / 更新」也能拉最新的主题，但只更新主题文件；默认主题和配色以脚本为准。
+- **`gtmc-forum-wiki` 合并到 `main` 之后**：重跑 `deploy-discourse.sh`（它会先拉取教程仓库），只有改过的教程会被修订。
 - **版块改名（「红石与技术」→「技术开发」、「模组与资源」→「资源分享」）和新增「新人指南」版块之后**：
   已经跑过旧脚本的站按 1→5 全部重跑一遍。`site_settings.rb` 按 `previous_names` 原地改名，帖子和版块地址不变；
   `badges.rb` 按版块名统计，不重跑的话「红石工程师」查不到帖子。原来发在「公告」的「新人指南」置顶帖，
@@ -43,8 +48,8 @@
 「老玩家俱乐部」在默认侧边栏里，但它只对信任等级 2 及以上可见：核心按权限过滤，
 新人的侧边栏里看不到它，升到 2 级后自动出现，不会点进去吃「无权访问」。
 
-**新手教程以仓库为准**：「新人指南」版块里的教程帖由 `guides.rb` 从 `infra/content/guides/` 同步，
-写法见那个目录的 `README.md`。
+**新手教程以仓库为准**：「新人指南」版块里的教程帖由 `guides.rb` 从 `gtmc-forum-wiki` 仓库同步，
+写法见那个仓库的 `README.md`。
 
 - 首帖被锁定（核心的「锁定帖子」）：普通用户包括发帖人都不能编辑，回复照常。教程首帖也不再是 wiki。
 - 管理员和版主仍然能编辑锁定的帖子，但下次同步会被仓库的版本覆盖，脚本会打印 `warning: ... last edited by <用户名>`。

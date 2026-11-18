@@ -5,7 +5,7 @@
 #
 # 必须在下面两件事之后执行，缺了会直接报错退出：
 #   1. infra/discourse/site_settings.rb 已执行（授予条件里引用的版块由它创建）；
-#   2. GTMC 主题已导入（徽章图标来自主题的图标精灵，见 theme/README.md「图标」）。
+#   2. GTMC 主题已导入（徽章图标来自主题的图标精灵，见 gtmc-forum-theme 的 README.md「图标」）。
 #
 # 用法（在自有机器上）：
 #   docker cp badges.rb app:/tmp/ && docker exec -u discourse -w /var/www/discourse app \
@@ -112,7 +112,7 @@ def event_regular_query
   SQL
 end
 
-# 图标取自主题的像素图标（theme/icons/），与版块、侧边栏用同一套：砖墙、齿轮、蛋糕、指南针。
+# 图标取自主题的像素图标（gtmc-forum-theme 的 icons/），与版块、侧边栏用同一套：砖墙、齿轮、蛋糕、指南针。
 # 都不开「可多次授予」：同一件事做十次也只该有一枚。
 def club_badges
   [
@@ -232,7 +232,7 @@ def assert_icons_in_sprite!(badges)
   missing_icons = icon_names - SvgSprite.custom_svgs(theme.id).keys
   return if missing_icons.empty?
 
-  abort "icons missing from the #{THEME_NAME} theme sprite: #{missing_icons.join(", ")}; re-import theme/"
+  abort "icons missing from the #{THEME_NAME} theme sprite: #{missing_icons.join(", ")}; add them to icons/ in gtmc-forum-theme, rebuild its sprite and rerun import_theme.rb"
 end
 
 # 核心的 preview 不抛异常，查询写错时把错误放在返回值的 errors 里

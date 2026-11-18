@@ -19,7 +19,7 @@
 
 THEME_NAME = "GTMC"
 
-# 顺序即侧边栏和版块列表里的顺序。图标来自 theme/icons/，见 theme/README.md「图标」。
+# 顺序即侧边栏和版块列表里的顺序。图标来自 gtmc-forum-theme 的 icons/，见那个仓库 README.md 的「图标」。
 CATEGORY_ICONS = [
   %w[公告 gtmc-sign],
   %w[新人指南 gtmc-compass],
@@ -91,7 +91,7 @@ end
 
 def gtmc_theme!
   Theme.find_by(name: THEME_NAME) ||
-    abort("theme #{THEME_NAME} not found; import theme/ first (see theme/README.md)")
+    abort("theme #{THEME_NAME} not found; run infra/discourse/import_theme.rb first")
 end
 
 def assert_icons_in_sprite!(theme, icon_names)
@@ -99,7 +99,7 @@ def assert_icons_in_sprite!(theme, icon_names)
   missing_icons = icon_names - sprite_icons
   return if missing_icons.empty?
 
-  abort "icons missing from the #{THEME_NAME} theme sprite: #{missing_icons.join(", ")}; re-import theme/"
+  abort "icons missing from the #{THEME_NAME} theme sprite: #{missing_icons.join(", ")}; add them to icons/ in gtmc-forum-theme, rebuild its sprite and rerun import_theme.rb"
 end
 
 def apply_category_style(category, position, icon)
