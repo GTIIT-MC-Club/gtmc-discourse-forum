@@ -113,6 +113,8 @@ end
 
 # 版块。permissions 为 nil 表示所有人可见；否则按用户组限制。
 # topic_template 是发帖时预填进正文的模板，topic_title_placeholder 是标题框里的灰字提示。
+# previous_names 是这个版块用过的旧名：脚本按名字找版块，找不到就新建，
+# 所以改名时要把旧名留在这里，已有的站才会原地改名，而不是多出一个空版块、帖子留在旧的那个里。
 CATEGORIES = [
   {
     name: "公告",
@@ -132,6 +134,15 @@ CATEGORIES = [
       有问题请到「白名单与申诉」发帖，不要在公告下面追问，方便后来的人按标题找到信息。
     TEMPLATE
   },
+  # 新手教程和「新人指南」置顶帖都发在这里。教程首帖设成 wiki，大家一起补充（infra/content/guides/README.md）。
+  # 不预填正文模板：教程的结构因内容而异，硬套模板只会让人每次先删一遍。
+  {
+    name: "新人指南",
+    color: "4A90D9",
+    desc: "新手教程：下载游戏、选启动器、装模组、进服",
+    topic_title_placeholder: "这篇教什么，例如「用 HMCL 安装 Fabric」",
+    topic_template: nil,
+  },
   {
     name: "建筑展示",
     color: "5DBB47",
@@ -148,7 +159,8 @@ CATEGORIES = [
     TEMPLATE
   },
   {
-    name: "红石与技术",
+    name: "技术开发",
+    previous_names: ["红石与技术"],
     color: "D0312D",
     desc: "红石机器、生电、命令方块与数据包",
     topic_title_placeholder: "机器名 + 一句话说明目标",
@@ -163,7 +175,8 @@ CATEGORIES = [
     TEMPLATE
   },
   {
-    name: "模组与资源",
+    name: "资源分享",
+    previous_names: ["模组与资源"],
     color: "8E5BD9",
     desc: "模组、光影、材质包推荐与整合包",
     topic_title_placeholder: "模组 / 材质包名 + 版本",
@@ -264,7 +277,20 @@ def apply_topic_template(category, spec)
   puts "updated template of category #{category.name}"
 end
 
+# 只改名字：版块的 id 和地址（slug）不变，帖子、关注、侧边栏里的版块都跟着走。
+def rename_category_from_previous_name(spec)
+  category = Category.find_by(name: spec.fetch(:previous_names, []))
+  return if category.nil?
+
+  previous_name = category.name
+  category.update!(name: spec[:name])
+  puts "renamed category #{previous_name} to #{spec[:name]}"
+  category
+end
+
 CATEGORIES.each do |spec|
-  category = Category.find_by(name: spec[:name]) || create_category(spec)
+  category =
+    Category.find_by(name: spec[:name]) || rename_category_from_previous_name(spec) ||
+      create_category(spec)
   apply_topic_template(category, spec)
 end

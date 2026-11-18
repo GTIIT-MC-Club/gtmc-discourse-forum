@@ -30,14 +30,14 @@ BADGE_GROUPING_POSITION = 0
 CORE_BADGE_TEXT_LOCALE = "zh_CN"
 
 BUILDING_CATEGORY_NAME = "建筑展示"
-REDSTONE_CATEGORY_NAME = "红石与技术"
+TECH_CATEGORY_NAME = "技术开发"
 EVENT_CATEGORY_NAME = "活动"
 
 # 授予门槛。200 人的社团里「被 3 人点赞」已经是明显认可；再高，一个学期里没几个人能拿到。
 MIN_LIKES_FOR_BUILDER = 3
 MIN_LIKES_FOR_REDSTONE_ENGINEER = 1
 MIN_EVENTS_FOR_REGULAR = 3
-# 发帖模板里的小标题（infra/discourse/site_settings.rb 的 CATEGORIES）。红石与技术版块的帖子
+# 发帖模板里的小标题（infra/discourse/site_settings.rb 的 CATEGORIES）。技术开发版块的帖子
 # 保留这三项，说明作者按模板写了目标、版本和现状。模板改了这里要同步改。
 REDSTONE_TEMPLATE_HEADINGS = %w[【目标】 【版本与依赖】 【现状】]
 # 「截图」按上传的图片文件判断，压缩包、存档等其他附件不算
@@ -78,7 +78,7 @@ def redstone_engineer_query
     FROM badge_posts device
     JOIN topics device_topic ON device_topic.id = device.topic_id
     JOIN categories c ON c.id = device_topic.category_id
-    WHERE c.name = #{sql_quote(REDSTONE_CATEGORY_NAME)}
+    WHERE c.name = #{sql_quote(TECH_CATEGORY_NAME)}
       AND device.post_number = 1
       AND device.post_type = 1
       AND device.like_count >= #{MIN_LIKES_FOR_REDSTONE_ENGINEER}
@@ -135,11 +135,11 @@ def club_badges
       name: "红石工程师",
       badge_type_id: BadgeType::Silver,
       icon: "gtmc-gear",
-      description: "在「#{REDSTONE_CATEGORY_NAME}」发过写清目标、版本和现状的装置帖，也回答过别人的问题",
+      description: "在「#{TECH_CATEGORY_NAME}」发过写清目标、版本和现状的装置帖，也回答过别人的问题",
       long_description: <<~TEXT.strip,
         同时满足：
 
-        - 在「#{REDSTONE_CATEGORY_NAME}」发过装置帖，保留了发帖模板里的「目标」「版本与依赖」「现状」，并且收到至少 #{MIN_LIKES_FOR_REDSTONE_ENGINEER} 个赞；
+        - 在「#{TECH_CATEGORY_NAME}」发过装置帖，保留了发帖模板里的「目标」「版本与依赖」「现状」，并且收到至少 #{MIN_LIKES_FOR_REDSTONE_ENGINEER} 个赞；
         - 在这个版块里回复过别人发的话题。
 
         系统每天自动核对一次。它只能检查模板的小标题还在、有人点赞、回复过别人，看不出装置能不能复现、回复算不算答到点上；
@@ -317,7 +317,7 @@ def apply_core_badge_text(i18n_name, field, value)
   puts "set #{CORE_BADGE_TEXT_LOCALE} text #{key} = #{value}"
 end
 
-[BUILDING_CATEGORY_NAME, REDSTONE_CATEGORY_NAME, EVENT_CATEGORY_NAME].each do |name|
+[BUILDING_CATEGORY_NAME, TECH_CATEGORY_NAME, EVENT_CATEGORY_NAME].each do |name|
   find_category!(name)
 end
 badges = club_badges

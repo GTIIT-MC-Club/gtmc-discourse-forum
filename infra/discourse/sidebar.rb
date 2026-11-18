@@ -22,10 +22,11 @@ THEME_NAME = "GTMC"
 # 顺序即侧边栏和版块列表里的顺序。图标来自 theme/icons/，见 theme/README.md「图标」。
 CATEGORY_ICONS = [
   %w[公告 gtmc-sign],
+  %w[新人指南 gtmc-compass],
   %w[活动 gtmc-cake],
   %w[建筑展示 gtmc-bricks],
-  %w[红石与技术 gtmc-gear],
-  %w[模组与资源 gtmc-chest],
+  %w[技术开发 gtmc-gear],
+  %w[资源分享 gtmc-chest],
   %w[白名单与申诉 gtmc-scroll],
   %w[水吧 gtmc-bucket],
   %w[老玩家俱乐部 gtmc-crown],
@@ -33,7 +34,8 @@ CATEGORY_ICONS = [
 
 ANNOUNCEMENT_CATEGORY_NAME = "公告"
 APPEAL_CATEGORY_NAME = "白名单与申诉"
-# 置顶帖「新人指南」的标题以此开头（infra/content/newcomer-guide.md 的一级标题）
+NEWCOMER_GUIDE_CATEGORY_NAME = "新人指南"
+# 置顶帖「新人指南」的标题以此开头（infra/content/newcomer-guide.md 的一级标题），发在同名版块里
 NEWCOMER_GUIDE_TITLE_PREFIX = "新人指南"
 
 # 核心自带、本站不用的版块，按核心记录它们的站点设置查找，不按名字（名字随安装时的语言变化）。
@@ -48,11 +50,11 @@ def find_category!(name)
     abort("category #{name} not found; run infra/discourse/site_settings.rb first")
 end
 
-def newcomer_guide_url(announcement_category)
+def newcomer_guide_url(guide_category)
   guide_topic =
     Topic
       .listable_topics
-      .where(category_id: announcement_category.id)
+      .where(category_id: guide_category.id)
       .where("title LIKE ?", "#{NEWCOMER_GUIDE_TITLE_PREFIX}%")
       .order(:id)
       .first
@@ -60,9 +62,9 @@ def newcomer_guide_url(announcement_category)
   if guide_topic
     guide_topic.relative_url
   else
-    # 帖子还没发：先指向公告版块，发帖后重跑本脚本就会改成帖子地址
-    puts "newcomer guide topic not found in #{announcement_category.name}; linking to the category for now"
-    announcement_category.url
+    # 帖子还没发（或还在公告版块没移过来）：先指向版块，发帖后重跑本脚本就会改成帖子地址
+    puts "newcomer guide topic not found in #{guide_category.name}; linking to the category for now"
+    guide_category.url
   end
 end
 
@@ -71,10 +73,10 @@ end
 # 名字用核心的英文名时，核心会按界面语言翻译（Badges → 徽章），所以这里只在核心没有合适译名时写中文。
 # 审核、管理只对管理人员显示（核心按权限判断）。
 # 核心默认还有 FAQ 和 Filter：FAQ 和置顶的「欢迎与社区规则」重复，Filter 是高级筛选，新人用不上，都不放。
-def community_links(guide_url)
+# 「新人指南」是版块，已在上面的版块区里，这里不再放一个同名链接。
+def community_links
   [
     { name: "最新话题", value: "/latest", icon: "gtmc-layers", segment: "primary" },
-    { name: "新人指南", value: guide_url, icon: "gtmc-compass", segment: "primary" },
     { name: "Badges", value: "/badges", icon: "gtmc-medal", segment: "primary" },
     { name: "Users", value: "/u", icon: "gtmc-players", segment: "primary" },
     { name: "Review", value: "/review", icon: "gtmc-magnifier", segment: "primary" },
@@ -223,7 +225,7 @@ def apply_community_section(links)
   puts "updated community sidebar section: #{links.map { |link| link[:name] }.join(", ")}"
 end
 
-# 页脚的「新人指南」「白名单与申诉」与侧边栏指向同一处。地址带数据库 id，主题里没法写死，所以由这里写入。
+# 页脚的「新人指南」指向置顶帖（还没发时指向同名版块），「白名单与申诉」指向版块。地址带数据库 id，主题里没法写死，所以由这里写入。
 def apply_footer_settings(theme, footer_urls)
   footer_urls.each do |setting_name, url|
     if theme.settings[setting_name].value == url
@@ -240,8 +242,8 @@ end
 theme = gtmc_theme!
 gtmc_categories = CATEGORY_ICONS.map { |name, _icon| find_category!(name) }
 announcement_category = find_category!(ANNOUNCEMENT_CATEGORY_NAME)
-guide_url = newcomer_guide_url(announcement_category)
-links = community_links(guide_url)
+guide_url = newcomer_guide_url(find_category!(NEWCOMER_GUIDE_CATEGORY_NAME))
+links = community_links
 
 assert_icons_in_sprite!(theme, CATEGORY_ICONS.map(&:last) + links.map { |link| link[:icon] })
 
