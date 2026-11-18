@@ -67,15 +67,12 @@ header.top { display: flex; align-items: center; gap: 16px; height: 56px; paddin
 .srv:first-of-type { border-top: 0; }
 .srv .name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .srv .count { font-variant-numeric: tabular-nums; }
-/* 第三列统一右对齐：人数和复制按钮的右边缘对齐 */
 .srv .count { justify-self: end; }
-/* 只有图标的按钮一律正方形；复制按钮平时只是一个淡灰图标，悬停这一行时才显出来，点到时才有底色 */
 .srv .copy-addr { grid-column: 3; grid-row: 2; justify-self: end; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
   color: color-mix(in srgb, var(--muted) 70%, transparent); }
 .srv:hover .copy-addr { color: var(--muted); }
 .srv .copy-addr:hover { background: var(--accent-soft); color: var(--accent); }
 .srv .copy-addr .ico { width: 16px; height: 16px; }
-/* 没人在线时头像行放一句占位文字，行高不变 */
 .faces .nobody { font-size: 12px; color: var(--muted); }
 .srv.collapsed { display: none; }
 .servers.expanded .srv.collapsed { display: grid; }
@@ -151,7 +148,6 @@ footer b { color: var(--text); font-weight: 600; }
 .big, .strip .total b { font-size: 36px; }
 .strip .total b { font-size: 24px; }
 
-/* 只有图标的按钮一律正方形 */
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); font-size: 14px; cursor: pointer; }
 .icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
@@ -208,7 +204,7 @@ blockquote { margin: 0 0 10px; padding: 8px 12px; background: var(--bg); border-
   <a class="side-item"><svg class="ico" aria-hidden="true"><use href="#gtmc-medal"/></svg><span>徽章</span></a>
   <a class="side-item"><svg class="ico" aria-hidden="true"><use href="#gtmc-players"/></svg><span>成员</span></a>
   <div class="side-heading">版块</div>
-  <a class="side-item" style="--cat:#E45735"><svg class="ico" aria-hidden="true"><use href="#gtmc-sign"/></svg><span>公告</span></a><a class="side-item" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg><span>活动</span></a><a class="side-item active" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg><span>建筑展示</span></a><a class="side-item" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg><span>红石与技术</span></a><a class="side-item" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg><span>模组与资源</span></a><a class="side-item" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg><span>白名单与申诉</span></a><a class="side-item" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg><span>水吧</span></a><a class="side-item" style="--cat:#B3923A"><svg class="ico" aria-hidden="true"><use href="#gtmc-crown"/></svg><span>老玩家俱乐部</span></a>
+  <a class="side-item" style="--cat:#E45735"><svg class="ico" aria-hidden="true"><use href="#gtmc-sign"/></svg><span>公告</span></a><a class="side-item" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg><span>活动</span></a><a class="side-item active" style="--cat:#5DBB47"><svg class="ico" aria-hidden="true"><use href="#gtmc-bricks"/></svg><span>建筑展示</span></a><a class="side-item" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg><span>技术开发</span></a><a class="side-item" style="--cat:#8E5BD9"><svg class="ico" aria-hidden="true"><use href="#gtmc-chest"/></svg><span>资源分享</span></a><a class="side-item" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg><span>白名单与申诉</span></a><a class="side-item" style="--cat:#92A1A8"><svg class="ico" aria-hidden="true"><use href="#gtmc-bucket"/></svg><span>水吧</span></a><a class="side-item" style="--cat:#B3923A"><svg class="ico" aria-hidden="true"><use href="#gtmc-crown"/></svg><span>老玩家俱乐部</span></a>
 </nav>
   <main>
     <div class="topic-head"><h1>主城钟楼完工！附 40 张截图和建造思路</h1>
@@ -238,7 +234,7 @@ blockquote { margin: 0 0 10px; padding: 8px 12px; background: var(--bg); border-
     <div class="panel"><h3>阅读进度</h3>
       <div class="timeline"><div class="track"><div class="thumb"></div></div>
         <div style="display:flex;flex-direction:column;justify-content:space-between"><span data-tip="第一帖发布于 11 月 16 日">11 月 16 日</span><b style="color:var(--text)" data-tip="读到第 3 帖，共 24 帖">3 / 24</b><span data-tip="最后回复时间">35 分钟前</span></div></div></div>
-    <div class="panel related"><h3>同版块的其他作品</h3><a>1.21 可用的全自动甘蔗农场，每小时 2.4k<small class="rel-meta"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>红石与技术</span><span>1 小时</span></small></a><a>第三届建筑大赛开始报名：主题「海港」<small class="rel-meta"><span class="cat" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg>活动</span><span>3 小时</span></small></a><a>【申请】MapleZhou 第一次进服<small class="rel-meta"><span class="cat" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg>白名单与申诉</span><span>5 小时</span></small></a></div>
+    <div class="panel related"><h3>同版块的其他作品</h3><a>1.21 可用的全自动甘蔗农场，每小时 2.4k<small class="rel-meta"><span class="cat" style="--cat:#D0312D"><svg class="ico" aria-hidden="true"><use href="#gtmc-gear"/></svg>技术开发</span><span>1 小时</span></small></a><a>第三届建筑大赛开始报名：主题「海港」<small class="rel-meta"><span class="cat" style="--cat:#F2A33A"><svg class="ico" aria-hidden="true"><use href="#gtmc-cake"/></svg>活动</span><span>3 小时</span></small></a><a>【申请】MapleZhou 第一次进服<small class="rel-meta"><span class="cat" style="--cat:#3AB7C4"><svg class="ico" aria-hidden="true"><use href="#gtmc-scroll"/></svg>白名单与申诉</span><span>5 小时</span></small></a></div>
   </aside>
 </div>
 <button class="mode-toggle" onclick="var r=document.documentElement;r.dataset.mode=r.dataset.mode==='dark'?'light':'dark'">切换深浅色</button>
