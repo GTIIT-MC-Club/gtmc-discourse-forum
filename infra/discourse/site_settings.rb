@@ -121,15 +121,8 @@ CATEGORIES = [
       everyone: :readonly,
       staff: :full,
     },
-    topic_title_placeholder: "日期 + 事件，例如「11 月 3 日 服务器例行维护」",
-    topic_template: <<~TEMPLATE,
-      【类型】维护 / 活动 / 规则变更 / 其他
-      【时间】几月几日 几点，预计持续多久
-      【影响范围】哪个服务器、会影响谁
-      【大家需要做什么】
-
-      有问题请到「白名单与申诉」发帖，不要在公告下面追问，方便后来的人按标题找到信息。
-    TEMPLATE
+    topic_title_placeholder: "例如「11 月 3 日 服务器维护」",
+    topic_template: nil,
   },
   # 新手教程和「新人指南」置顶帖都发在这里。教程由 guides.rb 从 gtmc-forum-wiki 仓库同步，首帖锁定（见那个仓库的 README.md）。
   # 不预填正文模板：教程的结构因内容而异，硬套模板只会让人每次先删一遍。
@@ -144,31 +137,23 @@ CATEGORIES = [
     name: "建筑展示",
     color: "5DBB47",
     desc: "晒出你的建筑、存档截图与巡礼",
-    topic_title_placeholder: "作品名 + 一句话介绍",
+    topic_title_placeholder: "作品名",
     topic_template: <<~TEMPLATE,
-      【作品名】
-      【坐标】进服后按 F3 查看，或写「出生点向东南 200 格」
-      【截图】至少一张全景、一张细节，直接拖进编辑框就行
-      【说明】用了什么材质包、参考了哪个教程
-      【参观须知】是否需要提前打招呼、附近有没有危险区域（岩浆、刷怪塔）
+      在哪个服：
+      坐标：
 
-      建得糙也没关系，发出来才有人夸。
     TEMPLATE
   },
   {
     name: "技术开发",
     previous_names: ["红石与技术"],
     color: "D0312D",
-    desc: "红石机器、生电、命令方块与数据包",
-    topic_title_placeholder: "机器名 + 一句话说明目标",
+    desc: "红石、生电、命令与数据包，模组和插件开发",
+    topic_title_placeholder: "例如「刷铁机效率上不去」「Fabric 模组怎么加新方块」",
     topic_template: <<~TEMPLATE,
-      【目标】这个装置要做什么、达成什么指标，例如「每小时 8000 铁锭」
-      【版本与依赖】服务器版本、是否需要数据包或命令方块
-      【现状】已经做到哪一步，卡在哪里
-      【参考】视频或教程链接
-      【报错原文】有报错就把整段贴上来，不要只写「报错」
+      游戏版本：
+      用到的模组 / 插件 / 数据包：
 
-      别人复现你的问题时需要这些信息，缺了通常只能猜。
     TEMPLATE
   },
   {
@@ -176,30 +161,23 @@ CATEGORIES = [
     previous_names: ["模组与资源"],
     color: "8E5BD9",
     desc: "模组、光影、材质包推荐与整合包",
-    topic_title_placeholder: "模组 / 材质包名 + 版本",
+    topic_title_placeholder: "名字 + 版本，例如「Sodium 1.21.1」",
     topic_template: <<~TEMPLATE,
-      【名称与版本】
-      【安装位置】客户端 / 服务端 / 两边都要
-      【下载地址】优先给作者的原发布页，不要只给网盘
-      【推荐理由】解决了什么问题，比默认的好在哪
-      【注意事项】是否与其他模组冲突、吃不吃配置
+      游戏版本：
+      下载：
 
-      服务器端的改动请先到「白名单与申诉」问一句，别自己装完才发现进不去。
     TEMPLATE
   },
   {
     name: "活动",
     color: "F2A33A",
     desc: "社团活动、比赛与报名",
-    topic_title_placeholder: "活动名称 + 日期",
+    topic_title_placeholder: "活动名 + 日期",
     topic_template: <<~TEMPLATE,
-      【活动名称】
-      【时间】几月几日 周几 几点到几点
-      【地点】服务器内坐标 / 线下地点
-      【报名方式】在下面回帖：游戏名（区分大小写）+ 需不需要借用设备
-      【注意事项】要自带什么、迟到了怎么加入
+      时间：
+      地点：
+      报名：在下面回复你的游戏名
 
-      活动前一天会在这里更新一次，报名后记得回来看。
     TEMPLATE
   },
   {
@@ -208,20 +186,8 @@ CATEGORIES = [
     desc: "白名单申请、封禁申诉与问题反馈",
     topic_title_placeholder: "【申请】游戏名 或 【申诉】游戏名",
     topic_template: <<~TEMPLATE,
-      先删掉用不上的那一段，只留你要办的事。
+      游戏名（区分大小写）：
 
-      ## 申请白名单（第一次进服）
-
-      【游戏名】照你在游戏里输入的写，区分大小写，写错会进不去
-      【玩过 Minecraft 吗】新手也欢迎，我们会带你
-
-      ## 申诉与问题反馈
-
-      【游戏名】区分大小写
-      【发生了什么】发生时间 + 当时在做什么
-      【你希望怎么解决】
-
-      一般 24 小时内有人回复。着急的话在社团群里 @ 管理员，别在这里重复发帖。
     TEMPLATE
   },
   {
@@ -274,6 +240,23 @@ def apply_topic_template(category, spec)
   puts "updated template of category #{category.name}"
 end
 
+# 版块简介存在版块的「关于」话题首帖里，核心在这篇帖子被修改时同步 categories.description，
+# 所以要改帖子而不是直接写 description。简介也以本文件为准，在后台改了会被改回来。
+def apply_category_description(category, spec)
+  about_post = category.topic.first_post
+  if about_post.raw.strip == spec[:desc]
+    puts "category #{category.name} description is up to date"
+    return
+  end
+
+  if about_post.last_editor_id != Discourse.system_user.id
+    puts "warning: description of category #{category.name} was last edited by user #{about_post.last_editor_id} on the forum; overwriting it with the repository version"
+  end
+  revised = about_post.revise(Discourse.system_user, { raw: spec[:desc] }, bypass_bump: true)
+  abort "updating description of category #{category.name} failed: #{about_post.errors.full_messages.join(", ")}" unless revised
+  puts "updated description of category #{category.name}"
+end
+
 # 只改名字：版块的 id 和地址（slug）不变，帖子、关注、侧边栏里的版块都跟着走。
 def rename_category_from_previous_name(spec)
   return if spec[:previous_names].blank?
@@ -291,5 +274,6 @@ CATEGORIES.each do |spec|
   category =
     Category.find_by(name: spec[:name]) || rename_category_from_previous_name(spec) ||
       create_category(spec)
+  apply_category_description(category, spec)
   apply_topic_template(category, spec)
 end
