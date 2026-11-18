@@ -19,7 +19,7 @@
 #   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
 #
 # 可重复执行：app.yml 内容没变就不重建容器（重建有停机），站点脚本本身是幂等的。
-# 顺序依赖见 infra/content/admin-setup.md：站点设置 → 主题 → 侧边栏 → 徽章 → 引导机器人，
+# 顺序依赖见 infra/content/admin-setup.md：站点设置 → 主题 → 侧边栏 → 徽章 → 引导机器人 → 新手教程，
 # 后一个脚本依赖前一个的结果，缺了会自己报错退出。
 
 set -euo pipefail
@@ -180,6 +180,9 @@ apply_site_configuration() {
 
   copy_into_container "$REPO/infra" /tmp/gtmc-infra
   run_script "引导机器人小火把" /tmp/gtmc-infra/discourse/narrative_bot.rb
+
+  # 教程目录作为参数传入，以后教程搬到单独的仓库时只改这里
+  run_script "新手教程（从仓库同步到「新人指南」）" /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-infra/content/guides
 }
 
 require_root "$@"
