@@ -93,14 +93,11 @@ GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教�
 ```
 infra/
   discourse/                  容器配置（app.yml、app.internal.yml）、新站初始化脚本（site_settings.rb、
-                              import_theme.rb、sidebar.rb、badges.rb、narrative_bot.rb）、教程同步 guides.rb、
-                              设置导出 export_config.rb
+                              import_theme.rb、sidebar.rb、badges.rb、narrative_bot.rb）、教程同步 guides.rb
   content/                    置顶帖、引导机器人文案、新站初始化手册 admin-setup.md
   frp/ caddy/ systemd/        入口和隧道
   deploy-discourse.sh         一键部署到论坛虚拟机
-  export-forum-config.sh      把论坛设置导出到 forum-config/
   README.md                   部署手册
-forum-config/                 论坛设置的备份（导出生成，不手改），见 CONFIGURATION.md
 CONFIGURATION.md              论坛的配置在哪里：代码归仓库、设置归论坛，备份和回档
 mc-plugin/                    MC 端接入，Gradle 多项目（第一期起）
   common/                     与平台无关的逻辑：论坛 API 客户端、心跳、进服判定、冻结状态机。
