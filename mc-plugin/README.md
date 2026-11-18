@@ -4,7 +4,7 @@
 `discourse-gtmc` 的 `POST /gtmc/server/heartbeat.json`。论坛首页的状态组件读的就是这份数据。
 接口约定见仓库根目录 `PLAN.md` 4.1，本目录不引用其他部分的源码。
 
-社团有 4 个互相独立的服，每个服装一份插件，靠配置里的 `server_id` 区分。目前只有心跳（里程碑 M1 / R2）。
+社团有 4 个互相独立的服，每个服装一份插件，靠配置里的 `server_id` 区分。这个插件目前只做心跳（进服验证见 `PLAN.md` 第二期）。
 
 ## 子项目
 
@@ -18,8 +18,7 @@ Gradle 多项目，根目录统一管理版本号和 Spotless 格式规则。
 模组端（Fabric/Forge/NeoForge）等负责人确认各服的核心和版本后再建，同样复用 `common/`（任务 F1）。
 新增平台时只写读状态、调度和读配置，把原始配置值交给 `PluginSettings.validate`，把状态交给 `HeartbeatClient`。
 
-`common/` 的 Javadoc 写明了每个类的线程约定：`HeartbeatClient.send` 会阻塞，只能在异步线程调用；
-`HeartbeatPayload` 在能安全读取服务端状态的线程（通常是主线程）上构造，之后不可变。
+线程约定见 `common/` 各类的 Javadoc。
 
 ## 构建与测试
 
@@ -42,8 +41,8 @@ cd mc-plugin
 ## 部署（Paper）
 
 1. 在论坛后台（管理 → API）生成一个 API Key：用户级别选「单个用户」，用户名填 `system`，
-   作用域只勾 `gtmc:server`。这个作用域由论坛插件注册（任务 P1）。4 个服共用同一个 Key 即可。
-2. 在论坛后台的 `gtmc_servers` 设置里登记这个服的 `server_id`、展示名、玩家连接地址和地图入口（任务 R1）。
+   作用域只勾 `gtmc:server`。这个作用域由论坛插件 `discourse-gtmc` 注册。4 个服共用同一个 Key 即可。
+2. 在论坛后台的 `gtmc_servers` 设置里登记这个服的 `server_id`、展示名、玩家连接地址和地图入口（格式见 `gtmc-forum-plugin` 的 README）。
 3. 把 `gtmc-paper-0.1.0.jar` 放进 MC 服务器的 `plugins/` 目录，启动一次服务器生成 `plugins/GtmcPaper/config.yml`。
 4. 编辑 `config.yml`，填 `forum_host`、`api_key` 和 `server_id`（占位符 `CHANGEME` 没改插件会拒绝启动并说明是哪一项），重启服务器。
 5. 看日志里有没有 `Reporting heartbeat to ... every 30s as server_id '...'.`，再访问 `https://<论坛域名>/gtmc/status.json`
@@ -82,7 +81,7 @@ java -Xmx4G -Djdk.httpclient.allowRestrictedHeaders=host -jar paper.jar nogui
 
 `infra/discourse/site_settings.rb` 打开了 `force_https`。直连回环走的是明文 HTTP，如果不声明 TLS 已在上游终结，
 Discourse 会回 301 跳转到 https，心跳就永远到不了。所以插件固定带上 `X-Forwarded-Proto: https`，
-和经过 Caddy 的请求保持一致。（这一点在真实 Discourse 上还没有验证过，见 PR 说明。）
+和经过 Caddy 的请求保持一致。未在真实 Discourse 上验证过：若 `force_https` 的行为与此不同，心跳会收到 301。
 
 ## 行为约定
 

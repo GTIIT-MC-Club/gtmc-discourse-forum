@@ -3,9 +3,7 @@
 本文件是 `infra/` 下各配置文件的部署步骤，对应 `PLAN.md` 第 5 节的 I1、I2、I3。
 写代码的规范见 `AGENTS.md`，这里只管「在哪台机器上按什么顺序敲什么命令」。
 
-**截至 2026-11-18，只有 I2.0（无 VPS 的内网装法）在真机上执行过**（论坛虚拟机 `100 gtmc-forum`）；
-I1（VPS）、I2.1~I2.5（代理、frpc）、I3 都还没跑过，因为域名和 VPS 还没买（见 PLAN 的 H1）。
-凡是没跑过的命令和配置项，都在文末「未验证」一节列出，执行时请逐条确认并把结果补回来。
+没在真机上执行过的步骤和配置项，在所在小节里用「未验证：」开头的一行标出，执行后把结论补进正文、删掉那一行。
 
 ## 0. 约定
 
@@ -14,7 +12,7 @@ I1（VPS）、I2.1~I2.5（代理、frpc）、I3 都还没跑过，因为域名�
 | 提示符 | 机器 | 说明 |
 |---|---|---|
 | `VPS$` | 境外 VPS，Debian 12 | 终结 HTTPS，跑 frps、Caddy、给自有机器用的 HTTP 代理 |
-| `HOME$` | 社团自有机器 X99，Debian | 跑 Discourse 容器、MC 服，无公网 IP，经 frp 暴露 |
+| `HOME$` | 论坛虚拟机（PVE 上的 `100 gtmc-forum`），Debian | 跑 Discourse 容器，无公网 IP，经 frp 暴露（见「部署前提」） |
 
 `HOME$` 上的命令默认用普通用户执行、需要时加 `sudo`；只能 root 做的步骤会写明在 root shell 里做。
 
@@ -41,11 +39,39 @@ I1（VPS）、I2.1~I2.5（代理、frpc）、I3 都还没跑过，因为域名�
 | 8880 | 自有机器 | 仅 127.0.0.1 | Discourse 容器 |
 | 8118 | 自有机器 | 127.0.0.1 和 172.17.0.1 | SSH 隧道出来的代理端口 |
 
+## 部署前提：PVE 宿主机与虚拟机
+
+社团自有机器（X99）跑 Proxmox VE 9：节点 `gtmc`，内网 `192.168.2.108`，网关 `192.168.2.1`，32 线程、64G 内存，传统 BIOS 启动。
+宿主机本身不需要代理，I2 的代理都配在论坛虚拟机里。软件源用北外 `mirrors.bfsu.edu.cn`：中科大和清华的镜像对这台机器返回 403。
+
+- **存储**：
+  - `local-btrfs`：128G 固态（`sdb3`），btrfs，数据 single、元数据 DUP。放 PVE 系统、论坛虚拟机系统盘和吃 IO 的 MC 服。
+  - `hdd`：1T 机械盘（`sda3`），ext4，挂在 `/mnt/hdd`（fstab 带 `nofail`，PVE 存储设了 `is_mountpoint`，内容类型 `images,rootdir,backup,iso,vztmpl`）。
+    放大容量的 MC 服和虚拟机磁盘、vzdump 备份、Discourse 备份副本和 ISO。
+  - 两块盘的引导分区 `sda2`、`sdb2` 都由 `proxmox-boot-tool` 同步。
+- **论坛放 KVM 虚拟机，不放 LXC**：Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting，
+  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。
+  虚拟机 `100 gtmc-forum`（`192.168.2.111`）：4 核、8G 内存，CPU 类型 `host`，开启 qemu-guest-agent；
+  25G 系统盘放 `local-btrfs`、开启 `discard`，不够时 `qm resize` 扩容或再挂 `hdd` 上的盘放附件和备份。
+  按 8G 内存，`db_shared_buffers` 取 2048MB（约内存的 25%）、`UNICORN_WORKERS` 取 3（`app.internal.yml` 已是这两个值，
+  `app.yml` 里还是 4096MB 和 4，换用它时要改）。
+- **frpc 装在论坛虚拟机里**，「frpc → `127.0.0.1:8880` → 容器」这一段与单机时相同，`app.yml`、`frpc.toml`、Caddy 都不用为 PVE 改。
+- **MC 服放其他虚拟机或 LXC**（不需要 Docker），4 个服可以各一台也可以合并，按负载分内存。
+  MC 插件不能走本机回环：`forum_url` 填论坛虚拟机的内网地址，`app.yml` 的 `expose` 额外绑定内网 IP
+  （如 `192.168.2.111:8880:80`），`Host` 和 `X-Forwarded-Proto` 两个头照旧带。
+- **内网的 8880 只放行 MC 那几台机器**：容器里的 nginx 信任 docker 网桥地址发来的 `X-Forwarded-For`（见 `app.yml`），
+  而经端口映射进来的请求来源都是网桥地址，谁能连上这个端口谁就能伪造真实 IP。用 PVE 防火墙把论坛虚拟机的 8880
+  限定为只接受各 MC 机器的地址。
+- **备份**：Discourse 自带的每日备份（可以单独恢复到任何机器）之外，用 PVE 的 vzdump 每周整机备份论坛虚拟机和 MC 机器，
+  存到 `hdd`。两者不互相替代。
+
 ---
 
-# I1 VPS 入口
+## I1 VPS 入口
 
-## I1.1 基础准备
+未验证：本节在任何机器上都没跑过，包括 apt 包名、`ss` 输出格式、`nmap` 结果形态。
+
+### I1.1 基础准备
 
 ```
 VPS$ sudo apt update && sudo apt install -y curl ca-certificates openssl tinyproxy
@@ -54,7 +80,7 @@ VPS$ sudo timedatectl set-timezone Asia/Shanghai   # 日志时间和你对得上
 
 Caddy 的证书申请依赖系统时间正确，`timedatectl` 的输出里 `System clock synchronized: yes` 是前提。
 
-## I1.2 安装 frps
+### I1.2 安装 frps
 
 frp 没有进 Debian 官方源，用官方 release 的二进制。版本号以
 <https://github.com/fatedier/frp/releases> 上最新一个 `linux_amd64` 包为准，
@@ -93,7 +119,13 @@ VPS$ journalctl -u frps -n 30 --no-pager
 **验收**：`systemctl status frps` 是 `active (running)`，`journalctl` 里能看到 frps 开始监听 7000。
 这时还没有 frpc 连上来，`ss -lntp | grep 8880` 应该是空的。
 
-## I1.3 安装 Caddy
+未验证：`infra/frp/frps.toml` 与 `frpc.toml` 按 frp v0.52+ 的 TOML 格式写，没用 `frps verify` 校验过，
+装完后跑一次 `sudo frps verify -c /etc/frp/frps.toml`（frpc 同理）。
+
+未验证：官方压缩包自带的 `frps.service`、`frpc.service` 与 `infra/systemd/` 下这两份内容不同（尤其 `ExecStart` 路径和 `RestartSec`），
+二选一，不要同时启用；本仓库这两份没做过语法校验，可用 `systemd-analyze verify frps.service` 检查。
+
+### I1.3 安装 Caddy
 
 用官方 apt 源（`apt install caddy` 装的是 Debian 自己的包，版本旧，插件少，不用它）：
 
@@ -134,7 +166,12 @@ VPS$ echo | openssl s_client -connect CHANGEME.forum.domain:443 \
 
 `issuer` 是 Let's Encrypt、`notAfter` 在三个月内，说明证书申请成功。502 属正常，因为 I2 还没做完。
 
-## I1.4 只监听回环的 HTTP 代理
+未验证：`infra/caddy/Caddyfile` 没做过语法校验，以 `caddy validate` 通过为准。
+
+未验证：这里假设 Caddy 默认不信任客户端自带的 `X-Forwarded-*`（未设置全局 `trusted_proxies` 时应如此），伪造的 XFF 会被丢弃。
+用 `curl -H 'X-Forwarded-For: 1.2.3.4' https://CHANGEME.forum.domain` 访问一次，在管理后台确认记录到的 IP 不是 1.2.3.4。
+
+### I1.4 只监听回环的 HTTP 代理
 
 自有机器在大陆，连不上 Docker Hub、GitHub 不稳定，I2 的所有拉取都要经这台 VPS 走代理。
 代理**只能**监听回环，靠 SSH 隧道给自有机器用，不对公网开放——相当于一个受 SSH 保护的出口。
@@ -162,10 +199,12 @@ LISTEN 0  128  127.0.0.1:8888  0.0.0.0:*  users:(("tinyproxy",pid=...,fd=...))
 VPS$ curl -x http://127.0.0.1:8888 -sI https://github.com | head -1
 ```
 
-`ss` 那一行必须是 `127.0.0.1:8888`，出现 `0.0.0.0:8888` 或 `*:8888` 就是没改对，立刻改回来。
+`ss` 那一行必须是 `127.0.0.1:8888`，出现 `0.0.0.0:8888` 或 `*:8888` 说明 `Listen` 没改对。
 `curl -x` 返回 `HTTP/2 200`（或 301）说明代理本身能出网。
 
-## I1.5 防火墙
+未验证：`Allow 127.0.0.1` 按「限制来源 IP」理解。经隧道来的请求被拒时对照 `tinyproxy.conf` 的注释调整；`Listen 127.0.0.1` 无论如何都要保留。
+
+### I1.5 防火墙
 
 只放行 22、80、443、7000。其余入站一律丢弃——8880 和 8888 只被回环访问，
 不写例外规则它们就天然不可达，这是第二层保险。
@@ -208,6 +247,8 @@ table inet filter {
 
 两种方式只能选一个，混用会让规则互相覆盖。
 
+未验证：nftables 版本没实际加载过，可先用 `sudo nft -c -f /etc/nftables.conf` 做语法检查。
+
 还有一条 ufw 管不到的东西：**Docker 发布会自己写转发规则，绕过 ufw**。
 所以 `infra/discourse/app.yml` 里的 `expose: "127.0.0.1:8880:80"` 必须保持只绑回环，
 不要为了图方便改成 `8880:80`——那样 ufw 拦不住，端口直接对公网开放。
@@ -230,16 +271,15 @@ VPS$ sudo ufw status numbered
 
 ---
 
-# I2 自有机器安装 Discourse
+## I2 自有机器安装 Discourse
 
 顺序有依赖：先隧道和代理（否则后面什么都拉不下来），再 Docker 和它的代理，再 frpc，最后 rebuild。
-下面每一步都写了该步自己的验收命令，不要跳步——I2 失败最常见的原因是某一步的代理没生效，
-到 `./launcher rebuild` 时才暴露，排查成本高得多。
+每一步都带验收命令，做完 I2.1–I2.4 各自的验收再 rebuild：代理没生效时，只在 `./launcher rebuild` 阶段才报错。
 
-## I2.0 现在的状态：没有 VPS，先只打通内网
+### I2.0 没有 VPS：只打通内网
 
-截至 2026-11-18，域名和 VPS 都还没买（PLAN 的 H1），所以 I2.1~I2.4 里的隧道、代理、frpc
-全部做不了。这段时间用下面这套「无代理直连 + 国内镜像源」的装法，机器起来后内网可访问，
+域名和 VPS 没到位时（PLAN 的 H1），I2.1~I2.4 里的隧道、代理、frpc 都做不了。
+这时用下面这套「无代理直连 + 国内镜像源」的装法，机器起来后内网可访问，
 外网访问等 VPS 到位再补。配置见 `infra/discourse/app.internal.yml`。
 
 在论坛虚拟机（`100 gtmc-forum`，`192.168.2.111`）上实测过的结果：
@@ -297,10 +337,7 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
 → 在本仓库旁边克隆或拉取教程仓库（`~/gtmc-forum-wiki`）→ 按 `infra/content/admin-setup.md` 的顺序
 在容器里跑完六个配置脚本（其中 `import_theme.rb` 让容器从 GitHub 安装主题 `gtmc-forum-theme`）。
 
-本仓库 2026-11 从 `gtmc-discourse` 改名为 `gtmc-forum-infra`，并拆出了插件、主题、教程三个仓库（PLAN 第 2 节）。
-已经按旧名克隆在 `~/gtmc-discourse` 的检出目录不用重新克隆：GitHub 会把旧地址转到新地址，
-`git remote set-url origin https://github.com/GTIIT-MC-Club/gtmc-forum-infra.git` 改过来即可；
-教程仓库会克隆到它旁边的 `~/gtmc-forum-wiki`。可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
+脚本可重复执行。`GTMC_FORCE_HTTPS=false` 必须在没有 TLS 的阶段传，
 否则 `force_https` 打开后全站 301 到 https:// 而那个端口没有 TLS。
 域名和 Caddy 就绪后去掉 `GTMC_APP_TEMPLATE` 与 `GTMC_FORCE_HTTPS` 再跑一次即可。
 
@@ -330,10 +367,10 @@ HOME$ cd /var/discourse && sudo ./launcher rebuild app
 插件仓库 `gtmc-forum-plugin` 和主题仓库 `gtmc-forum-theme` 都是公开的，所以容器里 `hooks.after_code` 的 `git clone`
 和 `import_theme.rb` 安装主题都不需要令牌；改成私有仓库时要换成只读 Deploy Key，不要把 PAT 写进 `app.yml`。
 
-## I2.0a 有域名、没有 VPS：用 Cloudflare Tunnel 对外
+### I2.0a 有域名、没有 VPS：用 Cloudflare Tunnel 对外
 
 域名托管在 Cloudflare 上时，可以先不买 VPS：在论坛虚拟机里跑 `cloudflared`，它主动连到 Cloudflare，
-HTTPS 由 Cloudflare 终结，家里不用开端口。这是过渡方案，原因有两个：
+HTTPS 由 Cloudflare 终结（真实 IP 取 `CF-Connecting-IP`），家里不用开端口。这是过渡方案，原因有两个：
 
 - Cloudflare 免费版在大陆没有节点，国内访问要绕路，速度随运营商和时段波动。要用手机流量、校园网实测过再决定长期用不用。
 - 第三期的 bridge 必须在境外机器上和 Discord 通信，到时候 VPS 还是要买，入口可以一起迁回 Caddy + frp。
@@ -376,7 +413,7 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.<domain>
 - 用手机流量打开一次论坛，再看 `/var/discourse/shared/standalone/log/var-log/nginx/access.log` 最后一行，
   来源 IP 应该是手机的公网地址，不是 `172.x` 或 `192.168.2.111`。是后者说明真实 IP 没取到，限流会误伤所有人。
 
-## I2.0b 发信
+### I2.0b 发信
 
 发信用阿里云邮件推送（免费每天 200 封，服务器在国内，学校邮箱收得到；论坛虚拟机连 `smtpdm.aliyun.com:465` 实测可通）。
 域名只是发件人的身份，真正投递靠发信服务：Cloudflare 只能收信转发、不能发信，自建 SMTP 又过不了 25 端口封锁和 IP 信誉。
@@ -410,7 +447,9 @@ DISCOURSE_NOTIFICATION_EMAIL=noreply@tempmail.<domain>
 另外两条要靠人：开放注册时分批放人，每天四五十人；在阿里云控制台看到当天快用完时，
 后台把 `disable_emails` 设为 `non-staff`，只给管理员发信，第二天再改回 `no`。
 
-## I2.1 建立 SSH 隧道到 VPS 的代理
+### I2.1 建立 SSH 隧道到 VPS 的代理
+
+未验证：I2.1~I2.5 在任何机器上都没跑过。
 
 在自有机器上开一条到 VPS 的本地转发。`-N` 表示只转发不开 shell，这条命令会一直占着终端，
 所以放在 `tmux`/`screen` 里跑，或者相关的几条命令做完再关掉。
@@ -444,7 +483,7 @@ HOME$ curl -x http://172.17.0.1:8118 -sI https://github.com | head -1
 隧道本身没有 systemd 单元：它只在装机和升级时用，用完可以关。断线重连用 `autossh -M 0 -N ...`
 （需要自己装 `autossh`），不要指望这条 ssh 一直活着。
 
-## I2.2 安装 Docker 并给守护进程配代理
+### I2.2 安装 Docker 并给守护进程配代理
 
 ```
 HOME$ export http_proxy=http://127.0.0.1:8118
@@ -493,7 +532,7 @@ HOME$ docker pull hello-world && docker run --rm hello-world
 `Waiting for another application to release...` 或超时。隧道断了这里会立刻报
 `proxyconnect tcp: dial tcp 127.0.0.1:8118: connect: connection refused`——这就是要修隧道。
 
-## I2.3 给 git 配代理
+### I2.3 给 git 配代理
 
 `git clone` 之类由你自己敲的命令会读到这份配置。**但容器里的克隆读不到**：
 `infra/discourse/app.yml` 的 `after_code` 钩子（`git clone .../docker_manager.git`，
@@ -514,10 +553,10 @@ HOME$ git ls-remote https://github.com/discourse/discourse_docker.git HEAD
 
 能打印出一个 `HEAD` 的 SHA 即可。报 `Could not resolve proxy` / `Connection refused` 就是隧道没起。
 
-代理只对 GitHub 之类的境外站点需要；以后要从国内源拉东西时用
-`git -c http.proxy= -c https.proxy= clone <国内地址>` 临时绕开，不要为这个改全局配置。
+代理只对 GitHub 之类的境外站点需要；从国内源拉东西时用
+`git -c http.proxy= -c https.proxy= clone <国内地址>` 临时绕开。
 
-## I2.4 安装 frpc
+### I2.4 安装 frpc
 
 ```
 HOME$ FRP_VERSION=0.61.0      # 与 I1.2 用的版本保持一致
@@ -557,7 +596,10 @@ LISTEN 0  128  127.0.0.1:8880  0.0.0.0:*  users:(("frps",pid=...,fd=...))
 这时 Discourse 还没起，`VPS$ curl -sI http://127.0.0.1:8880` 会报连接被拒或 502，属正常。
 如果 frpc 日志里是 `authorization failed`，就是两份配置的 token 不一致。
 
-## I2.5 克隆 discourse_docker 并 rebuild
+未验证：`transport.tls.enable = true` 在没配 `trustedCaFile` 时是否跳过对 frps 证书的校验，要按所选 frp 版本的文档确认。
+不跳过而报证书错误时，frps 配 `certFile`/`keyFile`，frpc 补 `transport.tls.trustedCaFile` 和 `transport.tls.serverName`。
+
+### I2.5 克隆 discourse_docker 并 rebuild
 
 按官方方式装在 `/var/discourse`：
 
@@ -620,13 +662,18 @@ HOME$ sudo docker exec app env | grep -i proxy
 HOME$ sudo journalctl -u docker -n 50 --no-pager
 ```
 
-容器里没有 `http_proxy` 就说明 launcher 没把它转成 `--build-arg`（见文末「未验证」）。
+未验证：`./launcher rebuild` 会不会把 shell 里的 `http_proxy`/`https_proxy`/`no_proxy` 转成 `--build-arg`，
+没核对当前 discourse_docker 的 launcher 源码。容器里没有 `http_proxy` 就是没转。
 这时 apt 层仍可经 `docker.service.d/http-proxy.conf` 里配的 daemon 代理出去；
-gem 层不要再依赖 `templates/web.china.template.yml`（它会把 github.com 改写到已失效的
-`mirror.ghproxy.com`，见 I2.0 的坑），改为在 `before_web` 钩子里显式把 `bundle config`
+gem 层不要用 `templates/web.china.template.yml`（见 I2.0 的坑），改为在 `before_web` 钩子里显式把 `bundle config`
 指向一个实测可用的 rubygems 镜像；构建就能继续，但浏览器里访问 GitHub 之类的地址仍要走 I2.1 的隧道。
 
-## I2 验收
+未验证：运行中的容器能否连上 github.com。主题从 Git 安装（PLAN 第 2 节），`import_theme.rb` 让容器里的核心在运行时
+`git clone` 主题仓库，这和重建时的 `--build-arg` 代理不是一条路。I2.0 的直连阶段 github.com 是通的；
+走 VPS 代理时用 `docker exec app git ls-remote https://github.com/GTIIT-MC-Club/gtmc-forum-theme.git` 确认。
+不通时 `import_theme.rb` 报错退出、主题保持原样，后台「外观 → 主题」的「检查更新」同样会失败。
+
+### I2 验收
 
 **1）重建全程无错**
 
@@ -667,56 +714,12 @@ HTTP/2 200
 注意：重启**不会**自动恢复 SSH 隧道（I2.1 说明它没有 systemd 单元），
 所以重启后 `docker pull` / `git clone` 需要重新开隧道；论坛本身的运行不依赖隧道，不受影响。
 
+未验证：`RestartPolicy.Name` 是否为 `always`。discourse_docker 的 launcher 通常带 `--restart=always`，没在当前版本核对。
+
 **4）真实 IP 与站点设置** 属于 I3，见下。
 
 ---
 
-# I3 上线前验证
+## I3 上线前验证
 
-待 I3 补充
-
----
-
-# 未验证
-
-以下命令和配置项在写这份手册时**没有在真机上执行过**（H1 的域名和 VPS 都还没到位）。
-执行时请逐条验证，并把结论补进对应小节或删掉本行。
-
-- **I2.0 之外的步骤**：I2.0 已在论坛虚拟机上验证过；其余（I1、I2.1~I2.5、I3）在任何机器上都没跑过，
-  包括 apt 包名、`ss` 输出格式、`nmap` 结果形态。
-- **`infra/frp/frps.toml` 与 `frpc.toml` 的 TOML 语法**：按 frp 新版（v0.52+）的 TOML 格式写，
-  未用 `frps verify` 校验过。装完后跑一次 `sudo frps verify -c /etc/frp/frps.toml`（frpc 同理）确认。
-- **frpc 默认不校验 frps 证书**：`transport.tls.enable = true` 是否在未配 `trustedCaFile` 时跳过对端校验，
-  需按所选 frp 版本的文档确认；如果不跳过而报证书错误，就在 frps 配 `certFile`/`keyFile`，
-  frpc 补 `transport.tls.trustedCaFile` 与 `transport.tls.serverName`。
-- **frp release 版本号**：手册里写 `0.61.0` 只是示例，实际以 release 页面最新版为准，两台机器必须一致。
-  二进制装到 `/usr/bin` 还是 `/usr/local/bin` 要与 systemd 单元的 `ExecStart` 对齐，否则 `203/EXEC`。
-- **官方压缩包自带的 frps.service / frpc.service** 与 `infra/systemd/` 下这两份内容不同（尤其
-  `ExecStart` 路径和 `RestartSec`），二选一，不要同时启用。
-- **Caddy 对来访 `X-Forwarded-For` 的处理**：手册假设 Caddy 默认不信任客户端自带的 `X-Forwarded-*`
-  （未设置全局 `trusted_proxies` 时应如此），因此伪造的 XFF 会被丢弃。上真机后用一个带伪造头的请求确认：
-  `curl -H 'X-Forwarded-For: 1.2.3.4' https://CHANGEME.forum.domain`，然后在管理后台看记录到的 IP 不是 1.2.3.4。
-- **`./launcher rebuild` 是否把 shell 里的 `http_proxy`/`https_proxy`/`no_proxy` 转成
-  `--build-arg`**：未核对当前 discourse_docker 的 launcher 源码。用 I2.5 的
-  `docker exec app env | grep -i proxy` 确认；不生效就改用 daemon 级代理。
-  不要用 `web.china.template.yml` 当备选：它把 github.com 改写到 `mirror.ghproxy.com`，
-  那个站不通时 `git fetch` 会无限重试（见 I2.0）。
-- **运行中的容器能否连上 github.com**：拆分仓库（PLAN T8）后，`import_theme.rb` 让容器里的核心在运行时
-  `git clone` 主题仓库，这和重建时的 `--build-arg` 代理不是一条路。I2.0 的直连阶段 github.com 是通的；
-  走 VPS 代理的阶段（I2.1~I2.5）未验证运行中的容器里有没有代理变量，用
-  `docker exec app git ls-remote https://github.com/GTIIT-MC-Club/gtmc-forum-theme.git` 确认。
-  不通时 `import_theme.rb` 报错退出、主题保持原样，后台「外观 → 主题」的「检查更新」同样会失败。
-- **`infra/caddy/Caddyfile` 与 `infra/systemd/*.service` 的语法**：本机没有 caddy 和 systemd，
-  未做校验。上真机后按手册里的 `caddy validate` / `systemctl daemon-reload` 通过为准，
-  单元文件可用 `systemd-analyze verify frps.service` 再检查一遍。
-- **`sudo -E` 能否保留代理环境变量**：取决于 sudoers 的 `env_reset`/`SETENV` 设置。
-  被拒绝时按 I2.2、I2.5 的备用写法在 root shell 里重新 export。
-- **`get.docker.com` 与 `download.docker.com` 的直连性**：在论坛虚拟机上实测都通（200、0.1~0.8s），
-  所以 I2.0 那条路不需要代理；但机器在大陆不同网段时结论可能不同，上真机前先跑一次
-  `curl -sS -m8 -o /dev/null -w '%{http_code}\n' https://get.docker.com`。
-- **tinyproxy 的 `Allow 127.0.0.1` 语义**：手册按「限制来源 IP」理解。若发现经隧道来的请求被拒，
-  对照 `tinyproxy.conf` 的注释调整；无论如何 `Listen 127.0.0.1` 是必须的。
-- **ufw 与 nftables 两套规则**：只选了 ufw 作为主线，nftables 版本未实际加载过
-  （`sudo nft -c -f /etc/nftables.conf` 可先做语法检查）。
-- **`docker inspect` 的 `RestartPolicy.Name` 是否为 `always`**：discourse_docker 的 launcher 通常带
-  `--restart=always`，未在当前版本核对。
+尚未开始，要做的事见 `PLAN.md` 第 5 节 I3。

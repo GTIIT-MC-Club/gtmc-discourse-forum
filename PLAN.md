@@ -12,10 +12,10 @@
 | 项 | 结论 |
 |---|---|
 | 运行机器 | 社团自有机器：X99 平台、Debian、64G DDR3，在校内（大陆网络），无公网 IP |
-| 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案 。有域名、还没有 VPS 时，过渡用 Cloudflare Tunnel（论坛虚拟机里的 cloudflared 主动连出，Cloudflare 终结 HTTPS，真实 IP 取 `CF-Connecting-IP`），见 `infra/README.md` I2.0a |
+| 对外访问 | 境外 VPS 做入口（Caddy 终结 HTTPS），经 frp 转发到自有机器；免备案。有域名、还没有 VPS 时过渡用 Cloudflare Tunnel，见 `infra/README.md` I2.0a |
 | 注册 | 仅 `@gtiit.edu.cn` 邮箱；游客可只读公开版块 |
 | 规模 | 约 100 人 |
-| MC 服务器 | **4 个互相独立的服**（各有地址，无群组代理），全部接入论坛；纯离线模式，没有任何登录插件。其中有 Paper/Purpur，也有 Fabric/Forge 系的模组服，各服的核心和版本待负责人确认（任务 H2）。与论坛在同一台机器（若改用 PVE 则分属不同虚拟机，见下文） |
+| MC 服务器 | **4 个互相独立的服**（各有地址，无群组代理），全部接入论坛；纯离线模式，没有任何登录插件。其中有 Paper/Purpur，也有 Fabric/Forge 系的模组服，各服的核心和版本待负责人确认（任务 H2）。与论坛在同一台机器的不同虚拟机上（见下文 Proxmox VE） |
 | 聊天平台 | Discord |
 | 节奏 | 2 周出 MVP（第一期），之后两期迭代 |
 | 域名 / VPS / 邮件服务 | 都还没有，需要负责人购买（见任务 H1） |
@@ -42,32 +42,10 @@
 
 ---
 
-### Proxmox VE（已确定，2026-11-17 装好 PVE 9.2.2）
+### Proxmox VE
 
-自有机器已装 PVE 9.2.2（节点 `gtmc`，内网 192.168.2.108，网关 192.168.2.1，32 线程、64G 内存，传统 BIOS 启动）。
-代码不用改（MC 插件的 `forum_url` 本来就是配置项），只影响 I2 的装法和几条网络假设。I2 按下面做：
-
-- **存储分工**（2026-11-18 调整完）：
-  - `local-btrfs`：128G 固态（`sdb3`，约 118G 可用），btrfs，数据 single、元数据 DUP。放 PVE 系统、论坛虚拟机系统盘（25G）和吃 IO 的 MC 服。
-  - `hdd`：1T 机械盘（`sda3`，约 930G），ext4，挂在 `/mnt/hdd`（fstab 带 `nofail`，PVE 存储设了 `is_mountpoint`，权限已开放 `images,rootdir,backup,iso,vztmpl`）。同时承接大容量 MC 服 / 虚拟机磁盘、vzdump 备份、Discourse 备份副本和 ISO。
-  - 安装时两块盘被选成了 btrfs RAID0，已在线拆开（balance 转 single/DUP 后 `btrfs device remove /dev/sda3`）。两块盘的 `sda2`/`sdb2` 引导分区都保留，仍由 `proxmox-boot-tool` 同步。
-- **内网地址**：论坛虚拟机 `192.168.2.111`（`.110` 已被别的设备占用）。
-- **软件源**：中科大和清华的镜像对这台机器返回 403，改用北外 `mirrors.bfsu.edu.cn`（南大、南科大、华为云也可用）。
-
-- **论坛放 KVM 虚拟机，不放 LXC。** Discourse 只支持官方 Docker 安装，Docker 跑在 LXC 里要开 nesting、
-  非特权容器下 overlayfs 和 cgroup 常出问题，升级 PVE 时也容易坏。虚拟机（`100 gtmc-forum`）给 4 核、8G 内存、25G 磁盘（放 `local-btrfs` 固态，开启 `discard`，后续不够可随时 `qm resize` 扩容或再挂 `hdd` 盘放附件/备份）；这时 `app.yml` 的 `db_shared_buffers` 要从 4096MB 降到 2048MB（约内存的 25%），
-  `UNICORN_WORKERS` 降到 3。CPU 类型选 `host`，开启 qemu-guest-agent。
-- **frpc 装在论坛虚拟机里**，这样「frpc → `127.0.0.1:8880` → 容器」这一段和现在完全一样，`app.yml`、
-  `frpc.toml`、Caddy 都不用改。
-- **MC 服放其他虚拟机或 LXC**（不需要 Docker，LXC 即可），4 个服可以各一台也可以合并，按各服负载分配内存。
-  MC 插件不能再走本机回环：`forum_url` 改成论坛虚拟机的内网地址，`app.yml` 的 `expose` 额外绑定内网 IP
-  （如 `10.0.0.10:8880:80`），`Host` 和 `X-Forwarded-Proto` 两个头照旧带。
-- **内网端口只放行 MC 那台机器。** 容器里的 nginx 信任 docker 网桥地址发来的 `X-Forwarded-For`
-  （见 `app.yml`），而经端口映射进来的请求来源都是网桥地址，谁能连上这个端口谁就能伪造真实 IP。
-  用 PVE 防火墙把论坛虚拟机的 8880 限定为只接受各 MC 机器的地址。
-- **备份**：Discourse 自带的每日备份照旧（它可以单独恢复到任何机器）；另外用 PVE 的 vzdump 每周整机备份
-  论坛虚拟机和 MC 机器，存到另一块盘。两者不互相替代。
-- **代理**：I2 里给 Docker 和构建容器配的 VPS 代理，改在论坛虚拟机内配置，PVE 宿主机本身不需要。
+自有机器跑 Proxmox VE，论坛和 MC 服各在自己的虚拟机里。宿主机配置、存储分工，以及由此带来的装法和网络约束，
+见 `infra/README.md` 的「部署前提」。
 
 ## 1. 架构
 
@@ -129,9 +107,6 @@ design/                       设计稿和品牌素材
 bridge/                       Node 22 + TypeScript，跑在 VPS（第三期，待建）
 ```
 
-第 5 节里 T8 之前的任务是按拆分前的单仓库写的：其中的 `plugins/discourse-gtmc/` 现在是 `gtmc-forum-plugin` 的根目录，
-`theme/` 是 `gtmc-forum-theme` 的根目录，`infra/content/guides/` 是 `gtmc-forum-wiki` 的根目录。
-
 **跨仓库的改动按依赖顺序做**：先在本仓库改第 4 节的契约（单独一个 PR，或和第一个实现一起），再按「插件 → 主题 →
 本仓库的部署脚本」的顺序在各仓库提 PR，每个 PR 的描述里链接契约的那次改动。主题依赖插件提供的接口和设置，
 部署脚本依赖前两者已经合并，所以合并和上线也按这个顺序。
@@ -171,7 +146,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期，�
 
 | 方法 路径 | 调用方 | 期 | 请求 | 响应 |
 |---|---|---|---|---|
-| `GET /gtmc/status.json` | 任何人 | 一 | — | `{refresh_interval_seconds（固定 30，与 MC 插件默认的心跳间隔一致；前端的轮询周期和刷新圆环都取它）, servers: [{server_id, name, address, map_url, icon, color, online, version, players_online, players_max, players, tps, updated_at}]}`。`servers` 已排好序：在线的在前、按 `players_online` 从多到少，离线的按 `gtmc_servers` 的顺序。某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null`。`players` 是 `[{mc_name, avatar_template}]`：**只对登录用户返回**，游客拿到 `null`（人数照常返回）；`avatar_template` 在 P2 绑定前用游戏名生成字母头像，绑定后用对应论坛账号的头像 |
+| `GET /gtmc/status.json` | 任何人 | 一 | — | `{refresh_interval_seconds, servers: [{server_id, name, address, map_url, icon, color, online, version, players_online, players_max, players, tps, updated_at}]}`，规则见表下 |
 | `GET /gtmc/newcomer_guide.json` | 任何人 | 一 | — | `{topic_url, read}`：置顶的「新人指南」帖的地址（找不到或当前用户看不见则为 `null`）、当前登录用户是否读过它（游客恒为 `false`）。右栏「新人进服」面板用它判断第二步 |
 | `POST /gtmc/server/heartbeat.json` | MC 插件 | 一 | `{server_id, version, players_online, players_max, player_names[], tps}` | `{status: "ok"}` 或 `{status: "unknown_server"}`；缺 `server_id` 或它不是字符串属于请求本身有问题，返回 400 |
 | `GET /gtmc/account.json` | 用户 | 二 | — | `{mc_name}`（未绑定为 `null`），`{renamable_at}` |
@@ -181,6 +156,13 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期，�
 | `GET /gtmc/server/players/:mc_name.json?ip=` | MC 插件 | 二 | — | 见下 |
 | `POST /gtmc/server/sessions.json` | MC 插件 | 二 | `{mc_name, code, ip}` | `{status: "ok", trusted_until}` 或 `{status: "invalid_code"}` 或 `{status: "too_many_attempts"}` |
 | `GET /gtmc/server/users/:user_id.json` | bridge | 三 | — | `{user_id, username, mc_name, trust_level}` |
+
+`GET /gtmc/status.json` 的响应规则：
+
+- `refresh_interval_seconds` 固定 30，与 MC 插件默认的心跳间隔一致；前端的轮询周期和刷新圆环都取它。
+- `servers` 已排好序：在线的在前、按 `players_online` 从多到少，离线的按 `gtmc_servers` 的顺序。
+- 某服超过 `gtmc_heartbeat_timeout_seconds` 没收到心跳则该项 `online: false`，`version` 起的字段为 `null`。
+- `players` 是 `[{mc_name, avatar_template}]`：**只对登录用户返回**，游客拿到 `null`（人数照常返回）；`avatar_template` 在 P2 绑定前用游戏名生成字母头像，绑定后用对应论坛账号的头像。
 
 `GET /gtmc/server/players/:mc_name.json` 的 `status`：
 
@@ -261,9 +243,16 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 
 ---
 
+### 4.4 主题与插件之间的出口
+
+- 右栏出口 `gtmc-right-rail`：由主题提供（`<PluginOutlet @name="gtmc-right-rail">`），插件把面板渲染进去，
+  面板按插件注册的顺序从上到下排。出现在话题列表页（`@outletArgs.topic` 为 `null`）和话题页（`@outletArgs.topic` 是当前话题）；
+  手机宽度主题不渲染右栏，插件在手机上自己换形态。出现条件的细节见 `gtmc-forum-theme` 的 README「右栏」。
+- 改出口名或 `outletArgs` 时先改本节，再按第 2 节的顺序改两个仓库。
+
 ## 5. 第一期任务（MVP）
 
-标 **H** 的任务只能由负责人本人做（花钱、实名、收验证码）。其余任务交给 worker。
+标 **H** 的任务只能由负责人本人做（花钱、实名、收验证码）。
 每个任务一个分支、一个 PR，做完对照验收标准自测，并在 PR 里贴出验证过程的真实输出。
 
 ### H1 采购与账号（负责人）
@@ -272,6 +261,10 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 买境外 VPS（香港或日本优先，1 核 1G、Debian 12 即可）。
 - 注册事务邮件服务（Resend 或 Brevo），按它的指引给域名加 SPF/DKIM 记录，拿到 SMTP 凭据。
 - 把凭据放进自有机器的 `app.yml`（不进仓库）。
+
+### H2 各服清单（负责人）
+
+列出 4 个服各自的 `server_id`、展示名、核心（Paper/Purpur/Fabric/Forge/NeoForge）、MC 版本、Java 版本、玩家连接地址。F1 等它。
 
 ### I1 VPS 入口
 
@@ -302,215 +295,8 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - 手动触发一次备份并确认文件生成；把备份目录同步到另一块盘或 VPS 的方案写进 `infra/README.md`。
 - **验收**：以上每条在 `infra/README.md` 里留下可复现的步骤。
 
-### P1 论坛插件骨架 + 服务器状态
+### F1 模组端适配（等 H2）
 
-- 建 `plugins/discourse-gtmc/`：`plugin.rb`、站点设置、中英文 locale、路由、rspec 配置。
-- 实现 4.1 里标「一」的两个接口和 `gtmc:server` API Key 作用域。
-- 在 `app.yml` 的 `after_code` 钩子里把本插件装进容器（克隆本仓库后复制 `plugins/discourse-gtmc`），重建验证。
-- **验收**：rspec 覆盖：心跳后状态在线、超时后离线、无 Key 或作用域不对被拒、`gtmc_enabled` 关闭时 `status.json` 404。
-  （关闭插件时 Discourse 会连带停用 `gtmc:server` 作用域，只勾了它的 Key 访问服务器接口得到 403 而非 404，这是预期行为。）
-
-### M1 MC 插件骨架 + 心跳
-
-- 建 `mc-plugin/`：Gradle（Kotlin DSL）、Java 21、`paper-api` 1.21.x、`plugin.yml`。
-  HTTP 用 JDK 自带的 `java.net.http`，JSON 用 Paper 自带的 Gson，不加其他运行时依赖。
-- `config.yml`：`forum_url`（默认 `http://127.0.0.1:8880`，同机直连不绕 VPS）、`api_key`、`heartbeat_interval_seconds`（默认 30）。
-  直连回环时要带 `Host: FORUM_HOST` 头，Discourse 才认；还要带 `X-Forwarded-Proto: https`，
-  否则 `force_https` 会把回环上的 HTTP 请求 301 到 HTTPS（待 I3 在真机确认）。
-- 定时异步上报心跳；失败只记一行警告，不刷屏、不影响服务器。
-- **验收**：真服上装好后，论坛 `/gtmc/status.json` 的人数随玩家进出变化；论坛停掉时服务器 TPS 不受影响。
-
-### T1 主题基础
-
-- 建 `theme/`：`about.json`、深浅两套配色、`common/`、`desktop/`、`mobile/` 样式。
-- 视觉方向：跟随系统的浅色/深色模式（主题的浅色配色设为 `GTMC Light`，深色配色设为 `GTMC Dark`，两套都允许用户自选）；草方块绿做强调色；标题和 Logo 用开源像素字体（Fusion Pixel 或 Ark Pixel，OFL 协议，
-  子集化后随主题分发），**正文用系统字体**保证可读；圆角收小、边框硬朗，呼应方块感，但不要整站像素化。
-- 借鉴 Linux.do 的布局：左侧边栏导航、紧凑的话题列表、醒目的分类色标。
-- 颜色只通过 Discourse 的配色方案和 CSS 变量取用，样式里不写死色值。
-- 开发方式：`discourse_theme watch theme/` 对着测试站实时同步。
-- **验收**：桌面和手机宽度下，首页、话题页、发帖框、用户页、管理后台都没有错位或看不清的文字；
-  深浅两套配色的正文对比度达到 WCAG AA。
-
-### T2 首页服务器状态组件
-
-- Glimmer 组件（`.gjs`），用 `api.renderInOutlet` 挂在话题列表上方。
-- 读 `/gtmc/status.json`，显示在线状态、人数、版本、服务器地址（点一下复制）、地图入口。每 30 秒刷新，页面不可见时暂停。
-- 三种状态都要有设计：在线、离线、接口请求失败。
-- **验收**：停掉 MC 服，120 秒内组件变为离线（离线判定超时 90 秒 + 组件刷新间隔 30 秒）；断网时显示「状态暂不可用」而不是空白或报错。
-
-### T3 侧边栏、图标、页头与页脚
-
-范围：`theme`、`infra`、`docs`。在 T1、T2 的主题上补四件事，之后的版块、侧边栏改动都改脚本，不在后台手点。
-
-- **侧边栏（`infra/discourse/sidebar.rb`，可重复执行）**：版块按「公告、新人指南、活动、建筑展示、技术开发、资源分享、白名单与申诉、水吧、老玩家俱乐部」排序（版块名以 T6 为准）并设为默认侧边栏版块；
-  删除核心自带的 General、Site Feedback；「社区」区放最新话题、新人指南、徽章、用户（管理人员另有审核、管理）；`site_settings.rb` 里关闭 `chat_enabled`（聊天走 Discord）。
-- **图标**：`theme/icons/` 里一个图标一个 16×16 的 `.svg` 文件，导入主题时由 `import_theme.rb` 拼成精灵（单色 `currentColor`、`crispEdges`），
-  版块设为图标样式。全部原创，不描摹 Mojang 素材（第 0 节非目标）。
-- **页头**：左上角的侧边栏开关在侧边栏展开、收起时位置不变（核心只在侧边栏展开时加宽共用的 `.wrap`，居中的页头随之平移；`desktop.scss` 把页头宽度固定）。
-- **页脚**：Glimmer 组件挂在 `below-footer` 出口。社团名和简介；链接：新人指南、白名单与申诉、关于、Discord 邀请
-  （Discord 链接是主题设置 `discord_invite_url`，留空不显示；前两个站内链接由 `sidebar.rb` 写入主题设置）；
-  声明「Minecraft 是 Mojang Synergies AB 的商标；本站为广东以色列理工学院学生社团自办，与 Mojang、Microsoft 无关」。
-  文字走主题 locales（中英文），样式只用 CSS 变量，类名以 `gtmc-` 开头。
-- **验收**：`sidebar.rb` 连跑两次，第二次只打印「up to date」；导入主题后 `theme_fields` 无编译错误，主题的浅色、深色配色没被覆盖；
-  桌面 1440 宽首页在侧边栏展开和收起时开关的横坐标相同；页脚在桌面（侧边栏展开、收起）和 390 宽手机上都不溢出、不遮挡；
-  页脚链接在 `discord_invite_url` 为空时少一项。
-
-### T4b 配色、状态、徽章与引导机器人
-
-范围：`infra`、`docs`。把主题导入、配色、徽章、引导机器人从后台手动操作改成可重复执行的脚本（执行顺序见 `infra/content/admin-setup.md`）。
-
-- **主题导入与配色（`infra/discourse/import_theme.rb`）**：打包 `theme/`、导入（已有就原地更新，不新建）、设为默认主题；
-  浅色配色设为 `GTMC Light`、深色配色设为 `GTMC Dark`（`Theme#color_scheme_id`、`dark_color_scheme_id`），两套配色都允许用户自选。
-- **自定义状态**：`site_settings.rb` 打开 `enable_user_status`。
-- **徽章（`infra/discourse/badges.rb`）**：「社团成就」分组；建筑师、红石工程师、活动常客用每日 SQL 查询自动授予，引路人手工授予；
-  信任等级 1 的核心徽章中文名改为「初来乍到」，另有几个核心徽章改中文名（翻译覆盖，不动徽章本身）。
-  不打开隐藏设置 `enable_badge_sql`（脚本不需要它，打开会给所有管理员写任意 SQL 的入口）。
-- **引导机器人（`infra/discourse/narrative_bot.rb`）**：改名「小火把」（用户名 `gtmc_torch`）、原创像素头像、简介；
-  新用户教程的中文台词（`infra/content/narrative-bot/zh_CN.yml`）改成社团口吻，结尾引导去「白名单与申诉」和「新人指南」；
-  `site_settings.rb` 打开插件默认关闭的欢迎私信（`disable_discourse_narrative_bot_welcome_post` 设为 false）。结业证书图片不改。
-- 顺带：`site_settings.rb` 补 `frozen_string_literal` 注释；`theme/README.md` 去掉「没有测试站」等过时说法。
-- **验收**：五个脚本按顺序连跑两次，第二次没有任何改动（只打印 up to date、或重新导入主题的同样结果）；
-  新注册的账号收到小火把的教程私信；`/badges` 页最前面是「社团成就」分组；用户菜单里有「设置自定义状态」；
-  全新导入主题（没有已存在的 GTMC）后浅色、深色配色与现状一致。
-
-### T4a 视觉统一
-
-范围：`theme`、`plugin`（只动状态卡片的样式）、`docs`。起因是试用反馈「宽度莫名其妙不一样、交互说不上来的不得劲」。
-参照 Linux.do 的手感（布局、间距、交互反馈），不参照它的配色和视觉稿。
-
-- **规范**：在 `theme/README.md` 新增「视觉规范」一节，只定四件事：布局的两级边缘（页面级：页头、正文、页脚共用 `.wrap` 的边缘；
-  话题级：标题、帖子、按钮行、推荐话题同宽）、字体与字号层级（像素字体只给 Logo，字号只用核心的几档变量）、
-  交互状态（按钮、链接、列表行、侧边栏项的悬停、按下、键盘焦点用同一套规则和同一个过渡时长，尊重 `prefers-reduced-motion`）、
-  边框与间距（只用核心的 `--space-*`）。之后的样式改动先对照这一节。
-- **按规范改**：`theme/` 里与规范冲突的旧规则直接删掉，不留兼容；首页状态卡片的边框和圆角取同样的变量，卡片不是链接，不加悬停效果。
-- 不改 `about.json` 的配色定义，不改 `infra/` 的脚本。
-- **验收**：深浅两套配色、桌面 1440 和手机 390 宽度下，首页、话题页、版块页、用户菜单的改前改后截图；
-  1440 宽话题页上标题、帖子、按钮行、推荐话题的左右边缘对齐，侧边栏展开、收起时开关横坐标不变且与正文左边缘对齐；
-  按钮、侧边栏项、话题列表行的键盘焦点都有清晰的焦点环；stylelint、prettier、eslint 通过；正文对比度保持 WCAG AA。
-
-### T5 按 C 方案重做界面（设计稿已定）
-
-设计依据：`design/mockups/c-server-first.html`（首页）、`c-topic.html`（话题页）、`c-mobile-home.html`（手机首页），
-`design/brand/`（社团 Logo、8×8 图标）。设计规则写在 `AGENTS.md`「界面规则」，验收逐条对照。
-设计稿是静态示意：布局、尺寸、交互状态以它为准，具体写法按 Discourse 的方式实现，不照抄设计稿的 HTML。
-
-分工（按 `AGENTS.md`：跟 MC 和我们自己数据有关的界面放插件，纯外观放主题）：
-
-**T5a 主题**（`theme/`）
-- 三栏布局：左侧边栏、中间内容、右栏。右栏由主题提供一个插件出口 `gtmc-right-rail`（`<PluginOutlet @name="gtmc-right-rail">`），
-  只在首页、版块列表和话题页出现；手机宽度不显示右栏（插件自己在手机上换形态，见 T5b）。话题页右栏放话题相关的面板：参与者、阅读进度、同版块话题。
-- 侧边栏选中项用「荧光笔」样式（加粗 + 文字下半截半透明强调色），不用左边框、不用整行底色。
-- 图标：`theme/icons/` 全部换成 `design/brand/icons-8x8/` 的 8×8 版本（`import_theme.rb` 拼精灵的逻辑不变）。
-- Logo：删掉主题里给站点标题套像素字体的样式和 `site_settings.rb` 里清空 `logo`/`logo_small` 的两项；Logo 改由管理员在后台上传
-  （`design/brand/gtmc-logo-3x.png`），主题只给 `#site-logo` 加 `image-rendering: pixelated`。小 Logo 暂缺（待负责人定），先留核心默认。
-- 像素字体只用于标签（版块标签、置顶、版本号）、在线人数和日期块，字号只取 12px 的整数倍并关闭抗锯齿；正文、标题、按钮、提示一律系统字体。
-- 动效令牌：`--gtmc-duration-state`（120ms）、`--gtmc-tooltip-delay`（400ms）、`--gtmc-ease`，`prefers-reduced-motion` 时时长为 0。
-- 全局提示：移植 OpenCard 的 `globalTooltip.ts`（本机 `~/Documents/GitHub/OpenCard/opencard-app/src/shared/ui/tooltip/`，规则见其 `docs/UI_RULES.md`
-  「浮层提示」一节）：元素用 `data-tooltip` 声明，默认贴鼠标并跟随，键盘聚焦贴控件，首次延迟、相邻控件同组即时切换。
-  核心的 DTooltip 只改外观使之与我们一致（深底、系统字体、圆角、动效令牌），行为不改。
-- T4a 的「宽度对齐」「交互状态」等覆盖核心选择器的规则，按新设计重新审视：能挪到配色或核心变量的挪过去，用不上的删掉。
-
-**T5b 插件**（`plugins/discourse-gtmc/`）
-- 按 4.1 新契约改 `status.json`（排序、`icon`/`color`、`players` 及其登录可见、`refresh_interval_seconds`），`gtmc_servers` 加 `icon`、`color` 字段；
-  新增站点设置 `gtmc_rail_visible_servers`（默认 3）。
-- 右栏「服务器」面板，渲染进 `gtmc-right-rail`：标题旁的刷新倒计时圆环（周期取 `refresh_interval_seconds`，不写死）、在线总人数、
-  每服一行固定两行高（图标块含状态角标、服名、版本标签、人数；头像叠 5 个 + `+N`，没人时占位文字；右下复制地址的正方形按钮），
-  超过 `gtmc_rail_visible_servers` 的折叠，「+N ⌄」展开。原首页顶部的服务器卡片删掉。
-- 右栏「公告」面板：「公告」版块最新 3 个话题（置顶在前，去掉版块的「关于」帖），排在「服务器」之后。
-- 右栏「新人进服」面板：注册、读新人指南（读过置顶的新人指南帖即算）、绑定游戏名、输入登录码四步；后两步在 P2/P3 完成前恒为未完成。全部完成后面板不再出现。
-- 右栏「近期活动」面板：读 `discourse-events` 的活动数据，日期块 48×48。
-- 手机：右栏面板改为首页顶部的横向服务器状态条 + 新人进度卡（只显示下一步），见 `c-mobile-home.html`。
-- 发帖人旁显示绑定的游戏名（P2 前不显示）。
-
-两项可并行；T5b 依赖 T5a 的出口名 `gtmc-right-rail`，这个名字以本节为准。
-
-
-
-- 版块已由 `site_settings.rb` 创建。为每个版块写发帖模板（如白名单申请、建筑展示、活动报名），追加进该脚本。
-- 调整信任等级门槛以适配 200 人的小社区（默认值是为大站设计的），设置写进脚本并在注释里说明每一项为什么这么调。
-- 写置顶帖：欢迎与社区规则、新人指南（怎么升级、各等级能做什么）。
-- 侧边栏分区、徽章（如「初来乍到」「建筑师」「红石工程师」）在后台配置，步骤记进 `infra/README.md`。
-- **验收**：新注册账号能看懂自己该去哪发帖、怎么升到 1 级。
-
-### T6 版块改名与「新人指南」版块
-
-范围：`infra`、`theme`（只改说明文字）、`docs`。
-
-- 「红石与技术」改名「技术开发」，「模组与资源」改名「资源分享」。`site_settings.rb` 的版块定义加 `previous_names`，
-  已有的站按旧名找到版块后原地改名（id、地址、帖子不变），不新建。`badges.rb` 按新名统计。
-- 新增「新人指南」版块（所有人可见、不预填模板、图标 `gtmc-compass`），侧边栏排在「公告」之后。
-  「新人指南」置顶帖和新手教程（`infra/content/guides/`，每篇首帖设成 wiki）都发在这里。
-  侧边栏「社区」区去掉同名的「新人指南」链接；页脚和引导机器人的链接仍指向置顶帖，找不到时指向版块。
-- **验收**：在已跑过旧脚本的站上按顺序重跑五个脚本：两个版块原地改名、原有帖子还在；第二遍只打印 up to date；
-  侧边栏只出现一个「新人指南」；「红石工程师」的授予结果与改名前相同。
-
-### T7 教程同步
-
-范围：`infra`、`docs`。取代 T6 里「每篇首帖设成 wiki」的做法：教程以仓库为准，论坛上不可编辑。
-
-- 教程写在 `infra/content/guides/`，一个 Markdown 文件一个话题（`README.md` 除外，可以有子目录）。
-  每个文件以 YAML front matter 开头，`title` 是话题标题；文件之间用相对路径互相链接（`./launcher.md`），在 GitHub 上能直接点。
-- `infra/discourse/guides.rb <教程目录>`（目录作为参数，以后教程可能搬到单独的仓库）把它们同步成「新人指南」版块的话题：
-  - 写入任何东西之前先检查完：front matter 缺失或不合法、标题重名、相对链接指向不存在的教程，都列出文件和链接后退出。
-    围栏代码块里的链接不算。
-  - 文件与话题的对应记在核心的永久链接里，地址 `wiki/<去掉 .md 的路径>`，顺带得到固定网址 `/wiki/launcher`。
-    没有永久链接时先接管版块里同名的未删除话题（生产站上手工发过「启动器是什么」「版本号和模组加载器」），没有才新建。
-  - 正文里的相对链接换成 `/t/<slug>/<id>`（不是 `/wiki/...`，核心只为话题地址建「谁链接了我」），末尾加「从仓库同步、
-    论坛上的修改会被覆盖」的页脚和 GitHub 编辑链接。标题或正文有变化才用系统账号修订（保留版本、不顶帖）；
-    最后编辑者不是系统账号时先打印警告。
-  - 首帖用核心的锁定帖子锁住、取消 wiki，回复不受影响。`index.md` 在版块内置顶（不全局置顶），其他话题不碰。
-  - 仓库里已删除、论坛上还有永久链接的教程只打印警告，不删任何东西。
-- `deploy-discourse.sh` 在最后执行它；执行顺序和「仓库为准」的说明写进 `admin-setup.md`，写作约定写进 `infra/content/guides/README.md`。
-- **验收**：在开发站上第一次执行发出全部教程（同名的旧话题被接管）；第二次只打印 up to date；改一个文件只修订那一篇；
-  链接写错时退出且什么都没写入；「安装 Minecraft」链接「启动器是什么」后者底下出现反向链接；
-  非管理人员（包括发帖人）对教程首帖 `can_edit_post?` 为 false；`/wiki/launcher` 跳到对应话题。
-
-### T8 拆分仓库
-
-范围：`infra`、`docs`，以及三个新仓库。目标见第 2 节：主题、插件、教程各自成库，走 Discourse 自己的安装机制。
-
-- 用 `git subtree split` 把 `plugins/discourse-gtmc/`、`theme/`、`infra/content/guides/` 的历史分别拆出来，
-  合并到 `gtmc-forum-plugin`、`gtmc-forum-theme`、`gtmc-forum-wiki` 已有的初始提交上（保留初始提交和 LICENSE，不强推），
-  文件放在仓库根目录。每个新仓库的 README 写明接口契约在本仓库 `PLAN.md` 第 4 节、代码规范见本仓库 `AGENTS.md`。
-- 插件：`app.yml` 和 `app.internal.yml` 的 `after_code` 钩子直接把 `gtmc-forum-plugin` 克隆成 `plugins/discourse-gtmc`
-  （完整克隆，docker_manager 要靠 Git 历史算落后几个提交）。
-- 主题：图标精灵改由主题仓库里的脚本从 `icons/` 生成、提交进仓库，脚本另有检查模式，确认提交的精灵与 `icons/` 一致。
-  `import_theme.rb` 不再打包，改用核心的远程主题从 Git 安装或更新；已有的 GTMC 主题原地改成远程主题，
-  id 和主题设置（`discord_invite_url` 等）不变。仍设为默认主题、设两套配色。部署时不再把 `theme/` 复制进容器。
-- 教程：`deploy-discourse.sh` 在论坛虚拟机上把 `gtmc-forum-wiki` 克隆到本仓库旁边（已有就 `pull --ff-only`，用仓库属主的身份），
-  交给 `guides.rb`；`guides.rb` 的编辑链接指向 `gtmc-forum-wiki`。
-- 本仓库删掉 `plugins/`、`theme/`、`infra/content/guides/`，其余文件里指向这些路径和旧仓库名 `gtmc-discourse` 的地方全部改掉。
-- **验收**：三个新仓库的 `git log` 里有原来的历史和初始提交；插件的 rspec 在新位置全部通过；在开发站上按顺序跑两遍
-  六个脚本，第二遍只打印 up to date；站上只有一个 GTMC 主题，是默认主题、是远程主题，主题设置的值与迁移前相同，
-  `sidebar.rb` 能找到全部图标。
-
-### 多服改造（P1、M1、T2 已按单服做完，这三项把它们改成 4 个服）
-
-接口以 4.1 为准（`server_id`、`gtmc_servers`、`status.json` 的 `servers` 数组）。三项可以并行。
-
-**H2 各服清单（负责人）**：列出 4 个服各自的 `server_id`、展示名、核心（Paper/Purpur/Fabric/Forge/NeoForge）、
-MC 版本、Java 版本、玩家连接地址。F1 等它。
-
-**R1 论坛插件改多服**（改 P1）
-- 新增 `gtmc_servers` 设置，删掉 `gtmc_server_address`、`gtmc_map_url`；心跳按 `server_id` 分键存储，
-  未登记的 `server_id` 返回 `unknown_server`；`status.json` 按 4.1 返回 `servers` 数组。
-- 后台把某个服从 `gtmc_servers` 里删掉后，它不再出现在 `status.json`，旧心跳键不用主动清（读取时只看登记过的）。
-- **验收**：rspec 覆盖两个服分别心跳互不影响、一个超时另一个仍在线、未登记的 `server_id`、`gtmc_servers` 为空时返回空数组，
-  以及 P1 原有的权限用例。
-
-**R2 MC 端拆成多项目**（改 M1）
-- 按第 2 节把 `mc-plugin/` 拆成 `common/` 和 `paper/`。心跳的组包、发送、失败限频挪进 `common/`，
-  `common/` 不许引用任何 Bukkit/Paper 类，编译目标 Java 17；`paper/` 只剩读取服务器状态和调度。
-- 配置加 `server_id`（必填，格式不对就禁用插件并说明），心跳带上它；收到 `unknown_server` 记一行警告并说明要去后台登记。
-- **验收**：`./gradlew build` 通过；`common/` 的单测不依赖 Paper；在真 Paper 服上对假论坛收到带 `server_id` 的心跳。
-
-**R3 状态组件改多服**（改 T2）
-- 首页显示 `servers` 里每个服一张紧凑卡片：服名、在线状态、人数、版本、地址（点一下复制）、地图入口。
-  只有一个服时布局不能显得空；手机宽度下卡片纵向排列。
-- 「状态暂不可用」仍是整体的（接口失败时没有任何服的数据）。
-- **验收**：QUnit 覆盖 0 个、1 个、4 个服，部分在线部分离线，以及接口失败。
-
-**F1 模组端适配**（等 H2）
 - 按 H2 的结果为每种模组加载器建一个 `mc-plugin/<加载器>/` 子项目，复用 `common/`。先做心跳，进服验证随第二期一起做。
 - 冻结在模组端要靠加载器的事件或 Mixin 实现，难度比 Paper 高。每种加载器开工前先写一页调研：
   哪些冻结行为能用现成事件拦住，哪些必须 Mixin，然后再写代码。
