@@ -96,26 +96,45 @@ Discord ◀──────────────▶│   └─▶ bridge (
 
 ## 2. 仓库结构
 
-单仓库，五个互相独立的部分。每个部分自带 README（怎么构建、怎么测、怎么部署），互不引用对方的源码，
-只通过第 4 节的接口契约通信。
+GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教程各自单独成库，是为了让它们走 Discourse
+自己的安装和更新机制（插件克隆进 `plugins/`、主题从 Git 安装、后台能看到版本和更新），不必再从总仓库里挑子目录。
+各部分自带 README（怎么构建、怎么测、怎么部署），互不引用对方的源码，只通过第 4 节的接口契约通信。
+
+| 仓库 | 内容 | 怎么装到论坛 |
+|---|---|---|
+| `gtmc-forum-infra`（本仓库） | `PLAN.md`、`AGENTS.md`、部署脚本和配置（`infra/`）、MC 端（`mc-plugin/`）、设计稿（`design/`），以后的 `bridge/` | 在论坛虚拟机上检出，`infra/deploy-discourse.sh` 部署 |
+| `gtmc-forum-plugin` | Discourse 插件 `discourse-gtmc`，Ruby + Ember，仓库根目录就是插件根目录 | `app.yml` 的 `after_code` 钩子把它克隆进容器的 `plugins/discourse-gtmc`，重建容器生效 |
+| `gtmc-forum-theme` | Discourse 主题 GTMC，仓库根目录就是主题根目录（`about.json` 在根上）；图标精灵 `assets/gtmc-icons.svg` 由仓库里的脚本从 `icons/` 生成并提交 | `infra/discourse/import_theme.rb` 用核心的远程主题从 Git 安装或更新，并设为默认主题、设配色 |
+| `gtmc-forum-wiki` | 新手教程（Markdown，一篇一个话题），文件在仓库根目录；`README.md` 是写作约定，不同步 | `deploy-discourse.sh` 在论坛虚拟机上克隆或拉取它，交给 `infra/discourse/guides.rb` 同步成「新人指南」的锁定话题 |
+
+插件内部的名字不变：插件名 `discourse-gtmc`、站点设置前缀 `gtmc_`、装在 `plugins/discourse-gtmc`。
+`AGENTS.md` 和第 4 节的接口契约只放在本仓库，另外三个仓库的 README 链接到这里。
+
+本仓库的目录：
 
 ```
 infra/
-  discourse/app.yml           已有，未在真机验证
-  discourse/site_settings.rb  已有，未在真机验证
-  frp/frps.toml               已有
-  frp/frpc.toml               待写（I2）
-  caddy/Caddyfile             待写（I1）
-  README.md                   部署手册，待写（I1–I3 边做边写）
-theme/                        Discourse 主题（第一期）
-plugins/discourse-gtmc/       Discourse 插件，Ruby + Ember（第一期起）
+  discourse/                  容器配置（app.yml、app.internal.yml）和站点脚本（site_settings.rb、import_theme.rb、
+                              sidebar.rb、badges.rb、narrative_bot.rb、guides.rb）
+  content/                    置顶帖、引导机器人文案、管理员操作手册 admin-setup.md
+  frp/ caddy/ systemd/        入口和隧道
+  deploy-discourse.sh         一键部署到论坛虚拟机
+  README.md                   部署手册
 mc-plugin/                    MC 端接入，Gradle 多项目（第一期起）
   common/                     与平台无关的逻辑：论坛 API 客户端、心跳、进服判定、冻结状态机。
                               只依赖 JDK 和 Gson，编译目标 Java 17（Fabric/Forge 的 1.20.x 服跑在 Java 17 上）
   paper/                      Paper/Purpur 插件 gtmc-paper，Java 21，薄适配层
   fabric/ neoforge/ …         模组端适配层，等 H2 确认各服核心和版本后再建（任务 F1）
-bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
+design/                       设计稿和品牌素材
+bridge/                       Node 22 + TypeScript，跑在 VPS（第三期，待建）
 ```
+
+第 5 节里 T8 之前的任务是按拆分前的单仓库写的：其中的 `plugins/discourse-gtmc/` 现在是 `gtmc-forum-plugin` 的根目录，
+`theme/` 是 `gtmc-forum-theme` 的根目录，`infra/content/guides/` 是 `gtmc-forum-wiki` 的根目录。
+
+**跨仓库的改动按依赖顺序做**：先在本仓库改第 4 节的契约（单独一个 PR，或和第一个实现一起），再按「插件 → 主题 →
+本仓库的部署脚本」的顺序在各仓库提 PR，每个 PR 的描述里链接契约的那次改动。主题依赖插件提供的接口和设置，
+部署脚本依赖前两者已经合并，所以合并和上线也按这个顺序。
 
 ## 3. 分期总览
 
@@ -131,7 +150,7 @@ bridge/                       Node 22 + TypeScript，跑在 VPS（第三期）
 
 ## 4. 接口契约
 
-三个代码库共用，**改契约必须先改本节再改代码**。所有 JSON 字段用 `snake_case`。
+论坛插件、MC 端、bridge 共用（插件在 `gtmc-forum-plugin` 仓库，契约只写在本节），**改契约必须先改本节再改代码**，跨仓库的顺序见第 2 节。所有 JSON 字段用 `snake_case`。
 统一术语见 `AGENTS.md` 的术语表。
 
 ### 4.1 论坛插件 `discourse-gtmc` 的 HTTP 接口
@@ -445,6 +464,25 @@ OIDC 的用户身份来自论坛：bridge 在登录交互里把用户重定向�
 - **验收**：在开发站上第一次执行发出全部教程（同名的旧话题被接管）；第二次只打印 up to date；改一个文件只修订那一篇；
   链接写错时退出且什么都没写入；「安装 Minecraft」链接「启动器是什么」后者底下出现反向链接；
   非管理人员（包括发帖人）对教程首帖 `can_edit_post?` 为 false；`/wiki/launcher` 跳到对应话题。
+
+### T8 拆分仓库
+
+范围：`infra`、`docs`，以及三个新仓库。目标见第 2 节：主题、插件、教程各自成库，走 Discourse 自己的安装机制。
+
+- 用 `git subtree split` 把 `plugins/discourse-gtmc/`、`theme/`、`infra/content/guides/` 的历史分别拆出来，
+  合并到 `gtmc-forum-plugin`、`gtmc-forum-theme`、`gtmc-forum-wiki` 已有的初始提交上（保留初始提交和 LICENSE，不强推），
+  文件放在仓库根目录。每个新仓库的 README 写明接口契约在本仓库 `PLAN.md` 第 4 节、代码规范见本仓库 `AGENTS.md`。
+- 插件：`app.yml` 和 `app.internal.yml` 的 `after_code` 钩子直接把 `gtmc-forum-plugin` 克隆成 `plugins/discourse-gtmc`
+  （完整克隆，docker_manager 要靠 Git 历史算落后几个提交）。
+- 主题：图标精灵改由主题仓库里的脚本从 `icons/` 生成、提交进仓库，脚本另有检查模式，确认提交的精灵与 `icons/` 一致。
+  `import_theme.rb` 不再打包，改用核心的远程主题从 Git 安装或更新；已有的 GTMC 主题原地改成远程主题，
+  id 和主题设置（`discord_invite_url` 等）不变。仍设为默认主题、设两套配色。部署时不再把 `theme/` 复制进容器。
+- 教程：`deploy-discourse.sh` 在论坛虚拟机上把 `gtmc-forum-wiki` 克隆到本仓库旁边（已有就 `pull --ff-only`，用仓库属主的身份），
+  交给 `guides.rb`；`guides.rb` 的编辑链接指向 `gtmc-forum-wiki`。
+- 本仓库删掉 `plugins/`、`theme/`、`infra/content/guides/`，其余文件里指向这些路径和旧仓库名 `gtmc-discourse` 的地方全部改掉。
+- **验收**：三个新仓库的 `git log` 里有原来的历史和初始提交；插件的 rspec 在新位置全部通过；在开发站上按顺序跑两遍
+  六个脚本，第二遍只打印 up to date；站上只有一个 GTMC 主题，是默认主题、是远程主题，主题设置的值与迁移前相同，
+  `sidebar.rb` 能找到全部图标。
 
 ### 多服改造（P1、M1、T2 已按单服做完，这三项把它们改成 4 个服）
 
