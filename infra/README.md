@@ -370,6 +370,40 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.<domain>
 - 用手机流量打开一次论坛，再看 `/var/discourse/shared/standalone/log/var-log/nginx/access.log` 最后一行，
   来源 IP 应该是手机的公网地址，不是 `172.x` 或 `192.168.2.111`。是后者说明真实 IP 没取到，限流会误伤所有人。
 
+## I2.0b 发信
+
+发信用阿里云邮件推送（免费每天 200 封，服务器在国内，学校邮箱收得到；论坛虚拟机连 `smtpdm.aliyun.com:465` 实测可通）。
+域名只是发件人的身份，真正投递靠发信服务：Cloudflare 只能收信转发、不能发信，自建 SMTP 又过不了 25 端口封锁和 IP 信誉。
+
+**1. 阿里云控制台**（地域选华东1（杭州），`smtpdm.aliyun.com` 是这个地域的地址）：
+发信域名里新建发信用的子域名（如 `tempmail.<domain>`），把控制台列出的 DKIM、SPF、DMARC 三条 TXT 和一条 MX
+记录加到 Cloudflare DNS，点验证；再新建发信地址 `noreply@<发信域名>`，类型选「触发邮件」，设置 SMTP 密码。
+阿里云要求发件人和登录用的发信地址一致，Discourse 所有通知都从 `notification_email` 这一个地址发，正好满足。
+
+**2. 在论坛虚拟机上写 `/etc/gtmc/smtp.env`**（只有 root 能读，密码不进仓库）：
+
+```
+# /etc/gtmc/smtp.env，属主 root、权限 600。由 infra/deploy-discourse.sh 合并进容器配置，改完重跑部署脚本生效。
+DISCOURSE_SMTP_ADDRESS=smtpdm.aliyun.com
+DISCOURSE_SMTP_PORT=465
+DISCOURSE_SMTP_USER_NAME=noreply@tempmail.<domain>
+DISCOURSE_SMTP_PASSWORD=CHANGEME
+# 465 是直接 TLS。不必再把 SMTP_ENABLE_START_TLS 设成 false：FORCE_TLS 打开时核心本来就不用 STARTTLS，
+# 而设成 false 会让后台仪表盘一直挂一条「STARTTLS 已禁用」的高优先级警告
+DISCOURSE_SMTP_FORCE_TLS=true
+# Discourse 把任何 DISCOURSE_<站点设置名> 当成全局设置，覆盖同名站点设置并在后台隐藏
+DISCOURSE_NOTIFICATION_EMAIL=noreply@tempmail.<domain>
+```
+
+每行 `键=值`，值不加引号、原样写，`#` 开头的行是注释。部署脚本发现这个文件就把这些键写进 `app.yml` 的 env 段、
+去掉 `DISCOURSE_DISABLE_EMAILS`，所以重跑部署脚本（会重建一次容器）后邮件就打开了。
+装到 `/var/discourse/containers/app.yml` 的成品里有密码，脚本按 600 权限安装。
+
+**3. 额度**：Discourse 没有全站每日上限，超过 200 封后连注册激活信、密码重置都会失败。
+`site_settings.rb` 已经压低了通知类邮件（关摘要、每人每天最多 5 封、通知 30 分钟后才发等，理由见脚本注释）。
+另外两条要靠人：开放注册时分批放人，每天四五十人；在阿里云控制台看到当天快用完时，
+后台把 `disable_emails` 设为 `non-staff`，只给管理员发信，第二天再改回 `no`。
+
 ## I2.1 建立 SSH 隧道到 VPS 的代理
 
 在自有机器上开一条到 VPS 的本地转发。`-N` 表示只转发不开 shell，这条命令会一直占着终端，

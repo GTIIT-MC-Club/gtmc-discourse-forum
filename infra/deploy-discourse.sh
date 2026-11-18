@@ -11,6 +11,9 @@
 #                      否则全站 301 到 https:// 而那个端口上没有 TLS
 #   GTMC_FORUM_HOST    覆盖配置里的 DISCOURSE_HOSTNAME。域名属于部署而不属于代码（PLAN 第 1 节），
 #                      临时的测试域名尤其不该提交进仓库，所以在这里传入
+#   GTMC_SMTP_ENV_FILE 发信配置，默认 /etc/gtmc/smtp.env（格式见 infra/README.md「发信」）。
+#                      文件存在就把里面的 DISCOURSE_* 写进容器配置并去掉 DISCOURSE_DISABLE_EMAILS；
+#                      不存在就照模板原样，内网配置下即不发信。SMTP 密码因此不进仓库
 # 例：
 #   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false infra/deploy-discourse.sh
 #   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
@@ -27,6 +30,7 @@ CONTAINER="${CONTAINER:-app}"
 APP_TEMPLATE="$REPO/infra/discourse/${GTMC_APP_TEMPLATE:-app.yml}"
 FORCE_HTTPS="${GTMC_FORCE_HTTPS:-true}"
 FORUM_HOST="${GTMC_FORUM_HOST:-}"
+SMTP_ENV_FILE="${GTMC_SMTP_ENV_FILE:-/etc/gtmc/smtp.env}"
 
 force_rebuild=0
 run_scripts=1
@@ -76,12 +80,40 @@ render_app_config() {
   sed "s/^  DISCOURSE_HOSTNAME:.*/  DISCOURSE_HOSTNAME: $FORUM_HOST/" "$APP_TEMPLATE" >"$rendered"
 }
 
+# 把发信配置文件里的 KEY=VALUE 逐行写进 app.yml 的 env 段。值一律写成 YAML 单引号字符串
+# （内部的单引号写两遍），密码里有 # : 空格等字符也不会被 YAML 误解。
+merge_smtp_env() {
+  local rendered="$1" env_lines="$2" line key value count=0
+  if [ ! -f "$SMTP_ENV_FILE" ]; then
+    echo "== 没有 ${SMTP_ENV_FILE}，容器配置里不加发信设置"
+    return
+  fi
+  : >"$env_lines"
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in '' | '#'*) continue ;; esac
+    key="${line%%=*}"
+    value="${line#*=}"
+    if ! printf '%s' "$key" | grep -Eq '^DISCOURSE_[A-Z0-9_]+$' || [ "$key" = "$line" ]; then
+      echo "$SMTP_ENV_FILE 里有一行不是 DISCOURSE_XXX=值 的格式（键：${key}），停止。" >&2
+      exit 1
+    fi
+    # 不用 ${value//\'/...}：替换串里引号的处理在 bash 各版本间不一致
+    printf "  %s: '%s'\n" "$key" "$(printf '%s' "$value" | sed "s/'/''/g")" >>"$env_lines"
+    count=$((count + 1))
+  done <"$SMTP_ENV_FILE"
+  grep -v '^  DISCOURSE_DISABLE_EMAILS:' "$rendered" | sed "/^env:\$/r $env_lines" >"$rendered.merged"
+  mv "$rendered.merged" "$rendered"
+  echo "== 发信设置来自 ${SMTP_ENV_FILE}（$count 项），已打开邮件"
+}
+
 install_app_config() {
-  local hostname rendered
-  rendered="$(mktemp)"
-  # shellcheck disable=SC2064  # 立即展开：退出时 rendered 这个局部变量已经不在了
-  trap "rm -f '$rendered'" EXIT
+  local hostname workdir rendered
+  workdir="$(mktemp -d)"
+  # shellcheck disable=SC2064  # 立即展开：退出时 workdir 这个局部变量已经不在了
+  trap "rm -rf '$workdir'" EXIT
+  rendered="$workdir/app.yml"
   render_app_config "$rendered"
+  merge_smtp_env "$rendered" "$workdir/smtp-env.yml"
   hostname="$(pick_web_hostname "$rendered")"
   if grep -q 'CHANGEME' "$rendered"; then
     echo "$APP_TEMPLATE 里还有 CHANGEME 占位符，填好再部署（内网阶段用 GTMC_APP_TEMPLATE=app.internal.yml）。" >&2
@@ -91,13 +123,14 @@ install_app_config() {
     echo "在 $APP_TEMPLATE 里找不到 DISCOURSE_HOSTNAME，停止。" >&2
     exit 1
   fi
-  echo "== 容器配置来自 $APP_TEMPLATE（DISCOURSE_HOSTNAME=$hostname）"
+  echo "== 容器配置来自 ${APP_TEMPLATE}（DISCOURSE_HOSTNAME=${hostname}）"
 
   if [ -f "$DISCOURSE_DIR/containers/app.yml" ] && cmp -s "$rendered" "$DISCOURSE_DIR/containers/app.yml"; then
     echo "   内容和已装的一致，不需要重建"
     needs_rebuild=0
   else
-    install -o root -g root -m 644 "$rendered" "$DISCOURSE_DIR/containers/app.yml"
+    # 600：渲染后的文件里可能有 SMTP 密码
+    install -o root -g root -m 600 "$rendered" "$DISCOURSE_DIR/containers/app.yml"
     echo "   已更新 $DISCOURSE_DIR/containers/app.yml"
     needs_rebuild=1
   fi

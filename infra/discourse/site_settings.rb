@@ -79,6 +79,16 @@ SETTINGS = {
   tl3_requires_likes_given: 15, # 默认 30
   tl3_requires_likes_received: 10, # 默认 20
 
+  # 发信额度：阿里云邮件推送免费每天 200 封，超出后连注册激活信、密码重置也发不出去。
+  # Discourse 没有全站每日上限，只能逐类压低通知邮件，把额度留给账号类邮件。
+  # default_* 只影响之后注册的用户；已有用户要在后台改设置时勾选「更新现有用户」。
+  disable_digest_emails: true, # 摘要是量最大、最不要紧的一类，活动和公告由 Discord 推送
+  max_emails_per_day_per_user: 5, # 默认 100；账号类邮件不受此限
+  email_time_window_mins: 30, # 默认 10；通知后 30 分钟内上线看过就不再发邮件
+  default_email_messages_level: 1, # 默认 0（总是）；改为仅离开时，同回复通知。新人注册时收到的机器人私信也就不再多发一封
+  default_email_level: 1, # 仅离开时（默认值）。「有人回复你」是把人拉回论坛的主要途径，不关
+  disable_mailing_list_mode: true, # 默认值；邮件列表模式每帖一封，必须保持关闭
+
   # 备份：每天一次，保留 7 份（存在 /var/discourse/shared/standalone/backups）
   backup_frequency: 1,
   maximum_backups: 7,

@@ -32,13 +32,8 @@ env:
   # 首个管理员邮箱，用它注册即自动成为管理员
   DISCOURSE_DEVELOPER_EMAILS: "CHANGEME@gtiit.edu.cn"
 
-  # 事务邮件服务（Resend / Brevo 等）的 SMTP
-  DISCOURSE_SMTP_ADDRESS: CHANGEME.smtp.host
-  DISCOURSE_SMTP_PORT: 587
-  DISCOURSE_SMTP_USER_NAME: CHANGEME
-  DISCOURSE_SMTP_PASSWORD: "CHANGEME"
-  DISCOURSE_SMTP_ENABLE_START_TLS: true
-  DISCOURSE_NOTIFICATION_EMAIL: noreply@CHANGEME.forum.domain
+  # SMTP 和发件地址不写在这里：密码不进仓库。部署脚本从本机 /etc/gtmc/smtp.env 读出来
+  # 合并进 env 段，格式见 infra/README.md「发信」。
 
 volumes:
   - volume:

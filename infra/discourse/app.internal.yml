@@ -42,8 +42,8 @@ env:
   # 不设 DISCOURSE_DEVELOPER_EMAILS：邮件关着，用那个邮箱注册也收不到激活信，成不了管理员。
   # 首个管理员在容器里用 rake admin:create 建，见 infra/README.md。
 
-  # 还没有 SMTP 服务。开着邮件会让注册卡在"等确认信"，所以先整个关掉。
-  # PLAN 第 0 节说注册只允许 @gtiit.edu.cn 邮箱，那要等邮件服务到位后连同 SMTP 配置一起开。
+  # 没有发信配置时整个关掉邮件，否则注册会卡在「等确认信」。
+  # 部署时如果本机有 /etc/gtmc/smtp.env，部署脚本会去掉这一行并合并进 SMTP 设置（见 infra/README.md「发信」）。
   DISCOURSE_DISABLE_EMAILS: "yes"
 
 volumes:
