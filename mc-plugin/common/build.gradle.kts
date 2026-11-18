@@ -10,7 +10,7 @@ dependencies {
 }
 
 tasks.withType<JavaCompile> {
-    // Fabric/Forge 的 1.20.x 服跑在 Java 17 上。release 会同时限制可用的语言特性和 JDK API，
+    // 心跳逻辑要能在 Java 17 的服务端上跑：release 同时限制可用的语言特性和 JDK API，
     // 误用 17 以后的 API 会直接编译失败。
     options.release = 17
 }

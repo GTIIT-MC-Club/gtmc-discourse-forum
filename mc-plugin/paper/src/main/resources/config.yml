@@ -1,5 +1,5 @@
 # 放在 MC 服务器目录的 plugins/GtmcPaper/config.yml。
-# 改完后重启服务器生效（M1 不支持热重载）。
+# 改完后重启服务器生效（插件不支持热重载）。
 # api_key 是密钥，不要把填好的文件提交到仓库或贴到群里。
 
 # 论坛地址。MC 服和论坛在同一台机器时直连本机回环，不绕 VPS。
@@ -18,6 +18,4 @@ api_key: "CHANGEME"
 server_id: "CHANGEME"
 
 # 心跳间隔，单位秒，取值 10 到 60。
-# 上限 60 是因为论坛 gtmc_heartbeat_timeout_seconds 默认 90 秒没收到心跳就判定离线，
-# 间隔再大，丢一次心跳就会闪成离线。
 heartbeat_interval_seconds: 30

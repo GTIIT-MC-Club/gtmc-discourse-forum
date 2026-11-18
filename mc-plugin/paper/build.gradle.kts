@@ -16,7 +16,6 @@ dependencies {
 }
 
 base {
-    // 保持 M1 的产物名 gtmc-paper-<版本>.jar，而不是目录名 paper-<版本>.jar。
     archivesName = "gtmc-paper"
 }
 
