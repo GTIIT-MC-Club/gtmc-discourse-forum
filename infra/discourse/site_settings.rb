@@ -123,13 +123,12 @@ CATEGORIES = [
     topic_title_placeholder: "例如「11 月 3 日 服务器维护」",
     topic_template: nil,
   },
-  # 新手教程和「新人指南」置顶帖都发在这里。教程由 guides.rb 从 gtmc-forum-wiki 仓库同步，首帖锁定（见那个仓库的 README.md）。
-  # 不预填正文模板：教程的结构因内容而异，硬套模板只会让人每次先删一遍。
+  # 「新人指南」置顶帖发在这里，成员也可以在这里问论坛或进服的基本问题。
   {
     name: "新人指南",
     color: "4A90D9",
-    desc: "新手教程：下载游戏、选启动器、装模组、进服",
-    topic_title_placeholder: "这篇教什么，例如「用 HMCL 安装 Fabric」",
+    desc: "论坛入门指引、新人答疑与常见操作说明",
+    topic_title_placeholder: "写清你想问的问题",
     topic_template: nil,
   },
   {

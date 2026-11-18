@@ -74,7 +74,7 @@ Discord ◀──────────────▶│   └─▶ bridge (
 
 ## 2. 仓库结构
 
-GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教程各自单独成库，是为了让它们走 Discourse
+GitHub 组织 `GTIIT-MC-Club` 下三个仓库。论坛的主题和插件各自单独成库，是为了让它们走 Discourse
 自己的安装和更新机制（插件克隆进 `plugins/`、主题从 Git 安装、后台能看到版本和更新），不必再从总仓库里挑子目录。
 各部分自带 README（怎么构建、怎么测、怎么部署），互不引用对方的源码，只通过第 4 节的接口契约通信。
 
@@ -83,17 +83,16 @@ GitHub 组织 `GTIIT-MC-Club` 下四个仓库。论坛的主题、插件和教�
 | `gtmc-forum-infra`（本仓库） | `PLAN.md`、`AGENTS.md`、部署脚本和配置（`infra/`）、MC 端（`mc-plugin/`）、设计稿（`design/`），以后的 `bridge/` | 在论坛虚拟机上检出，`infra/deploy-discourse.sh` 部署 |
 | `gtmc-forum-plugin` | Discourse 插件 `discourse-gtmc`，Ruby + Ember，仓库根目录就是插件根目录 | `app.yml` 的 `after_code` 钩子把它克隆进容器的 `plugins/discourse-gtmc`，重建容器生效 |
 | `gtmc-forum-theme` | Discourse 主题 GTMC，仓库根目录就是主题根目录（`about.json` 在根上）；图标精灵 `assets/gtmc-icons.svg` 由仓库里的脚本从 `icons/` 生成并提交 | `infra/discourse/import_theme.rb` 用核心的远程主题从 Git 安装或更新；第一次安装时设为默认主题、设配色 |
-| `gtmc-forum-wiki` | 新手教程（Markdown，一篇一个话题），文件在仓库根目录；`README.md` 是写作约定，不同步 | `deploy-discourse.sh` 在论坛虚拟机上克隆或拉取它，交给 `infra/discourse/guides.rb` 同步成「新人指南」的锁定话题 |
 
 插件内部的名字不变：插件名 `discourse-gtmc`、站点设置前缀 `gtmc_`、装在 `plugins/discourse-gtmc`。
-`AGENTS.md` 和第 4 节的接口契约只放在本仓库，另外三个仓库的 README 链接到这里。
+`AGENTS.md` 和第 4 节的接口契约只放在本仓库，另外两个仓库的 README 链接到这里。
 
 本仓库的目录：
 
 ```
 infra/
   discourse/                  容器配置（app.yml、app.internal.yml）、新站初始化脚本（site_settings.rb、
-                              import_theme.rb、sidebar.rb、badges.rb、narrative_bot.rb）、教程同步 guides.rb、
+                              import_theme.rb、sidebar.rb、badges.rb、narrative_bot.rb）、
                               设置导出 export_config.rb
   content/                    置顶帖、引导机器人文案、新站初始化手册 admin-setup.md
   frp/ caddy/ systemd/        入口和隧道

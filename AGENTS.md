@@ -1,7 +1,7 @@
 # 代码规范
 
-本仓库（`gtmc-forum-infra`）和 `gtmc-forum-plugin`、`gtmc-forum-theme`、`gtmc-forum-wiki` 三个仓库的所有代码
-（Ruby、Ember/JS、SCSS、Java、TypeScript、配置和脚本）都遵守本文件。三个仓库不另存副本，各自的 README 链接到这里。
+本仓库（`gtmc-forum-infra`）和 `gtmc-forum-plugin`、`gtmc-forum-theme` 两个仓库的所有代码
+（Ruby、Ember/JS、SCSS、Java、TypeScript、配置和脚本）都遵守本文件。另外两个仓库不另存副本，各自的 README 链接到这里。
 做什么见 `PLAN.md`；这里只管怎么写。
 
 总原则：**代码是写给下一个接手的同学看的。** 社团成员每年换届，接手的人没有上下文、没人可问。
@@ -163,5 +163,5 @@
 
 - Conventional Commits，英文祈使句，说明意图：`feat(plugin): issue one-time login codes`。
 - 范围用目录名：`infra`、`theme`、`plugin`、`mc-plugin`、`bridge`、`docs`。
-  三个新仓库里照旧：`gtmc-forum-plugin` 用 `plugin`，`gtmc-forum-theme` 用 `theme`，`gtmc-forum-wiki` 用 `docs`。
+  另外两个仓库里照旧：`gtmc-forum-plugin` 用 `plugin`，`gtmc-forum-theme` 用 `theme`。
 - 一个提交一件事。格式化改动和逻辑改动分开提交。

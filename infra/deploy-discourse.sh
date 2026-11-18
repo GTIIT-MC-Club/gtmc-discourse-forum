@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# 部署论坛：更新容器配置和代码（插件、主题、教程）。论坛设置只在新站上初始化一次，之后归后台管理，
+# 部署论坛：更新容器配置和代码（插件、主题）。论坛设置只在新站上初始化一次，之后归后台管理，
 # 本脚本不再覆盖（为什么、怎么备份和回档见 CONFIGURATION.md）。
-# 插件和主题不经过本脚本复制：插件由 app.yml 的钩子在重建时克隆，主题由 import_theme.rb 让容器从 GitHub 安装，
-# 教程仓库 gtmc-forum-wiki 由本脚本克隆或拉取到本仓库旁边（$WIKI_REPO）再交给 guides.rb。
+# 插件和主题不经过本脚本复制：插件由 app.yml 的钩子在重建时克隆，主题由 import_theme.rb 让容器从 GitHub 安装。
 # 在论坛虚拟机（100 gtmc-forum）上，从仓库检出目录里用 root 执行：
 #   sudo infra/deploy-discourse.sh
 #   sudo infra/deploy-discourse.sh --rebuild      # 强制重建容器（改 app.yml 之外的容器配置时）
@@ -26,8 +25,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WIKI_REPO="$(dirname "$REPO")/gtmc-forum-wiki"
-WIKI_REPOSITORY_URL="https://github.com/GTIIT-MC-Club/gtmc-forum-wiki.git"
 DISCOURSE_DIR="${DISCOURSE_DIR:-/var/discourse}"
 CONTAINER="${CONTAINER:-app}"
 APP_TEMPLATE="$REPO/infra/discourse/${GTMC_APP_TEMPLATE:-app.yml}"
@@ -69,19 +66,6 @@ sync_repository() {
   if [ "$(sudo -u "$owner" git -C "$REPO" rev-parse HEAD)" != "$previous_head" ]; then
     echo "== 仓库有更新，用新版本的部署脚本重新开始"
     GTMC_DEPLOY_PULLED=1 exec "$REPO/infra/deploy-discourse.sh" "${DEPLOY_ARGUMENTS[@]}"
-  fi
-}
-
-# 教程仓库和本仓库同一个属主，理由同 sync_repository。
-sync_wiki_repository() {
-  local owner
-  owner="$(stat -c %U "$REPO")"
-  if [ -d "$WIKI_REPO/.git" ]; then
-    echo "== 以 $owner 的身份拉取教程仓库 $WIKI_REPO"
-    sudo -u "$owner" git -C "$WIKI_REPO" pull --ff-only
-  else
-    echo "== 以 $owner 的身份克隆教程仓库到 $WIKI_REPO"
-    sudo -u "$owner" git clone "$WIKI_REPOSITORY_URL" "$WIKI_REPO"
   fi
 }
 
@@ -223,7 +207,6 @@ install_or_update_theme() {
 }
 
 apply_site_configuration() {
-  sync_wiki_repository
   copy_into_container "$REPO/infra" /tmp/gtmc-infra
 
   local state
@@ -239,9 +222,6 @@ apply_site_configuration() {
       exit 1
       ;;
   esac
-
-  copy_into_container "$WIKI_REPO" /tmp/gtmc-forum-wiki
-  run_script "新手教程（从 gtmc-forum-wiki 同步到「新人指南」）" /tmp/gtmc-infra/discourse/guides.rb /tmp/gtmc-forum-wiki
 }
 
 require_root "$@"
