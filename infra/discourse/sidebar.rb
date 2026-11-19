@@ -204,7 +204,7 @@ def apply_community_section(links)
   puts "updated community sidebar section: #{links.map { |link| link[:name] }.join(", ")}"
 end
 
-# 页脚的「新人指南」「白名单与申诉」都指向版块（「新人指南」版块里置顶的是教程目录）。地址带数据库 id，主题里没法写死，所以由这里写入。
+# 页脚的「新人指南」「白名单与申诉」都指向版块（「新人指南」版块里置顶的是「新人指南」帖）。地址带数据库 id，主题里没法写死，所以由这里写入。
 def apply_footer_settings(theme, footer_urls)
   footer_urls.each do |setting_name, url|
     if theme.settings[setting_name].value == url

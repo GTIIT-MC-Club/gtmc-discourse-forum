@@ -333,9 +333,9 @@ HOME$ sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false \
         ~/gtmc-forum-infra/infra/deploy-discourse.sh
 ```
 
-这个脚本做四件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
+这个脚本做三件事：拉最新代码 → 把选定的 `app.yml` 装到 `/var/discourse/containers/`
 （内容没变就不重建容器，重建有停机；插件 `gtmc-forum-plugin` 由 `app.yml` 的钩子在重建时克隆）
-→ 在本仓库旁边克隆或拉取教程仓库（`~/gtmc-forum-wiki`）→ 从 GitHub 更新主题 `gtmc-forum-theme`、同步教程。
+→ 从 GitHub 更新主题 `gtmc-forum-theme`。
 新站第一次部署时还会先跑一遍初始化脚本，把论坛设成社团的出厂设置；之后论坛设置归后台管理，部署不再改它们
 （见仓库根目录的 `CONFIGURATION.md`）。
 
