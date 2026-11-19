@@ -213,7 +213,7 @@ if [ "$run_scripts" -eq 1 ]; then
 
 == 完成
 还剩下脚本不管的手工步骤（见 infra/content/admin-setup.md）：
-  1. 后台上传 Logo：设置 → 品牌 → Logo，用 design/brand/gtmc-logo-3x.png
+  1. 后台上传 Logo 和图标：设置 → 品牌，用 design/brand/ 里的文件，对照表见 admin-setup.md
   2. 「欢迎与社区规则」置顶帖发在「公告」，「新人指南」置顶帖发在「新人指南」版块；
      发完后重跑一次本脚本，侧边栏和机器人结尾的链接才会指向那篇帖子
 DONE
