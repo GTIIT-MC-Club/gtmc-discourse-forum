@@ -1,9 +1,0 @@
-# 境外 VPS：/etc/frp/frps.toml
-bindPort = 7000
-
-auth.method = "token"
-auth.token = "CHANGEME-long-random-string"
-
-# 转发出来的端口只绑在 VPS 回环上，只有本机的 Caddy 能访问，公网扫不到
-proxyBindAddr = "127.0.0.1"
-allowPorts = [{ single = 8880 }]

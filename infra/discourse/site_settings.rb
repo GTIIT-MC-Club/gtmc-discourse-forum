@@ -2,7 +2,7 @@
 
 # 新站的站点设置和版块。
 # 只在新站初始化时执行一次（infra/deploy-discourse.sh 按数据库里的初始化标记判断），之后这些设置归后台管理，
-# 再部署不会覆盖；要备份或回档见 CONFIGURATION.md。
+# 再部署不会覆盖；备份靠后台自带的备份功能。
 # 设置名写错会直接报错退出，不会静默跳过。设置名以当前版本 config/site_settings.yml 为准。
 # 已经存在的同名版块不动，所以初始化中途失败后重跑是安全的。
 #
@@ -36,7 +36,7 @@ SETTINGS = {
   min_first_post_length: 6,
   search_tokenize_chinese: true,
 
-  # 关掉核心自带的聊天（侧边栏随之没有「频道」区）。聊天统一走 Discord，MC 服和论坛的消息也汇到那里（PLAN 4.3）；
+  # 关掉核心自带的聊天（侧边栏随之没有「频道」区）。聊天统一走 Discord，MC 服和论坛的消息也汇到那里；
   # 再开一处站内聊天，消息会分散在两个地方。
   chat_enabled: false,
 

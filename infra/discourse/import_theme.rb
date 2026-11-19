@@ -3,7 +3,7 @@
 # 从 gtmc-forum-theme 仓库安装或更新 GTMC 主题（核心的远程主题 RemoteTheme，后台「外观 → 主题」能看到版本）。
 # 主题代码每次部署都更新，主题设置（如 discord_invite_url）不受影响。
 # 第一次安装时还会设成默认主题、浅色配色 GTMC Light、深色配色 GTMC Dark、两套配色允许用户自选；
-# 这些是论坛设置，之后归后台管理，本脚本不再改（见 CONFIGURATION.md）。
+# 这些是论坛设置，之后归后台管理，本脚本不再改。
 #
 # 由 infra/deploy-discourse.sh 调用（容器要能连上 github.com，核心在容器里执行 git clone）。
 

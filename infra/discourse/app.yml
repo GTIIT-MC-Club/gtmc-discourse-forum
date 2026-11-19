@@ -1,24 +1,22 @@
-# 复制到自有机器的 /var/discourse/containers/app.yml，填好 CHANGEME 后 ./launcher rebuild app
-# TLS 在境外 VPS 的 Caddy 上终结，这里不启用 ssl / letsencrypt 模板。
+# 论坛虚拟机（gtmc-forum，192.168.2.111）的 Discourse 容器配置，
+# 部署时由 infra/deploy-discourse.sh 装到 /var/discourse/containers/app.yml。
+# 对外入口是 Cloudflare Tunnel，见 infra/README.md。
 
 templates:
   - "templates/postgres.template.yml"
   - "templates/redis.template.yml"
   - "templates/web.template.yml"
   - "templates/web.ratelimited.template.yml"
-  # 不引 templates/web.china.template.yml：它的 before_code 会把容器里所有
-  # https://github.com/ 改写成 https://mirror.ghproxy.com/...，而这个代理站连不上时
-  # git fetch 会无限重试，rebuild 永远停在拉代码。gem/npm 也不缺镜像：
-  # 直连 rubygems.org、registry.npmjs.org 都很快。
+  # 不引 templates/web.china.template.yml：它会把容器里的 github.com 改写成代理站，代理连不上时 rebuild 会卡死。
 
-# 只监听本机回环，由 frpc 转发出去；不直接暴露到局域网
+# 只绑内网地址，由同一台虚拟机上的 cloudflared 转发出去，不监听到公网网卡。
 expose:
-  - "127.0.0.1:8880:80"
+  - "192.168.2.111:8880:80"
 
 params:
   db_default_text_search_config: "pg_catalog.english"
-  # 64G 内存的机器，给数据库 4G 绰绰有余
-  db_shared_buffers: "4096MB"
+  # 这台 VM 有 8G 内存，给数据库约四分之一。
+  db_shared_buffers: "2048MB"
   db_work_mem: "40MB"
 
 env:
@@ -26,14 +24,18 @@ env:
   LANG: en_US.UTF-8
   LANGUAGE: en_US.UTF-8
   DISCOURSE_DEFAULT_LOCALE: zh_CN
-  UNICORN_WORKERS: 4
+  # 8G 内存配 3 个 worker。扩容到这个 VM 之前不要再加。
+  UNICORN_WORKERS: 3
 
-  DISCOURSE_HOSTNAME: CHANGEME.forum.domain
-  # 首个管理员邮箱，用它注册即自动成为管理员
-  DISCOURSE_DEVELOPER_EMAILS: "CHANGEME@gtiit.edu.cn"
+  # 没有域名时用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
+  # 不必每人改 hosts。以后换成正式域名只需改这一行再 rebuild。
+  DISCOURSE_HOSTNAME: 192.168.2.111
+  # 不设 DISCOURSE_DEVELOPER_EMAILS：邮件关着，用那个邮箱注册也收不到激活信，成不了管理员。
+  # 首个管理员在容器里用 rake admin:create 建，见 infra/README.md。
 
-  # SMTP 和发件地址不写在这里：密码不进仓库。部署脚本从本机 /etc/gtmc/smtp.env 读出来
-  # 合并进 env 段，格式见 infra/README.md「发信」。
+  # 没有发信配置时整个关掉邮件，否则注册会卡在「等确认信」。
+  # 部署时如果本机有 /etc/gtmc/smtp.env，部署脚本会去掉这一行并合并进 SMTP 设置（见 infra/README.md「发信」）。
+  DISCOURSE_DISABLE_EMAILS: "yes"
 
 volumes:
   - volume:
@@ -43,29 +45,27 @@ volumes:
       host: /var/discourse/shared/standalone/log/var-log
       guest: /var/log
 
+# 不装这两个插件，论坛就没有 GTMC 的功能（右栏、服务器状态等）和后台升级页。
 hooks:
   after_code:
     - exec:
         cd: $home/plugins
         cmd:
           - git clone https://github.com/discourse/docker_manager.git
-          # 自写插件在单独的仓库 gtmc-forum-plugin，按 Discourse 的标准做法克隆成 plugins/discourse-gtmc：
-          # 目录名就是插件名（plugin.rb 的 name），与仓库名无关。完整克隆而不是 --depth 1，
-          # 后台「升级」页（docker_manager）要靠 Git 历史算出落后几个提交。
-          # 先 rm 是为了在同一个容器里重跑这个钩子时不因目录已存在而失败。
           - rm -rf ./discourse-gtmc
           - git clone https://github.com/GTIIT-MC-Club/gtmc-forum-plugin.git discourse-gtmc
 
 run:
-  # 流量路径：用户 → Caddy(VPS) → frp → 127.0.0.1:8880 → 容器。
-  # 容器里看到的来源是 docker 网桥，必须从 X-Forwarded-For 取真实 IP，
-  # 否则全站用户共用一个 IP，限流会误伤所有人。
-  # 写成 outlets/server/ 下的独立文件（官方 cloudflare.template.yml 的做法）：web.template.yml 会删掉
-  # discourse.conf 里的 "listen 80;"，对它做 replace 匹配不到，而 pups 匹配不到时不报错。
+  # 经 Cloudflare Tunnel 进来的请求，在容器看来都来自 cloudflared 所在的这台虚拟机
+  # （经端口映射后是 docker 网桥地址或本机内网地址），真实 IP 在 CF-Connecting-IP 头里。
+  # 不取的话全站共用一个 IP，web.ratelimited 的限流会误伤所有人。
+  # 只信任这两类来源：局域网里其他机器直连时来源是它们自己的地址，伪造的头不会被采用。
+  # 不用官方的 cloudflare.template.yml：它信任的是 Cloudflare 的公网 IP 段（直接回源的情形），
+  # 走 Tunnel 时来源是本机，不在那些段里。写成 outlets/server/ 下的文件的原因见 app.yml。
   - file:
       path: /etc/nginx/conf.d/outlets/server/gtmc-real-ip.conf
       chmod: 644
       contents: |
         set_real_ip_from 172.16.0.0/12;
-        real_ip_header X-Forwarded-For;
-        real_ip_recursive on;
+        set_real_ip_from 192.168.2.111;
+        real_ip_header CF-Connecting-IP;

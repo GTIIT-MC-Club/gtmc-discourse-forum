@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 部署论坛：更新容器配置和代码（插件、主题）。论坛设置只在新站上初始化一次，之后归后台管理，
-# 本脚本不再覆盖（为什么、怎么备份和回档见 CONFIGURATION.md）。
+# 本脚本不再覆盖（备份靠后台自带的备份功能）。
 # 插件和主题不经过本脚本复制：插件由 app.yml 的钩子在重建时克隆，主题由 import_theme.rb 让容器从 GitHub 安装。
 # 在论坛虚拟机（100 gtmc-forum）上，从仓库检出目录里用 root 执行：
 #   sudo infra/deploy-discourse.sh
@@ -8,17 +8,15 @@
 #   sudo infra/deploy-discourse.sh --no-scripts   # 只同步 app.yml 和容器，不跑站点里的脚本
 #
 # 环境变量：
-#   GTMC_APP_TEMPLATE  用哪份容器配置，默认 app.yml；内网阶段（没有域名）用 app.internal.yml
 #   GTMC_FORCE_HTTPS   初始化新站时传给 site_settings.rb，默认 true；没有 TLS 的阶段必须传 false，
 #                      否则全站 301 到 https:// 而那个端口上没有 TLS。站点初始化之后改到后台去改
-#   GTMC_FORUM_HOST    覆盖配置里的 DISCOURSE_HOSTNAME。域名属于部署而不属于代码（PLAN 第 1 节），
+#   GTMC_FORUM_HOST    覆盖配置里的 DISCOURSE_HOSTNAME。域名属于部署而不属于代码，
 #                      临时的测试域名尤其不该提交进仓库，所以在这里传入
 #   GTMC_SMTP_ENV_FILE 发信配置，默认 /etc/gtmc/smtp.env（格式见 infra/README.md「发信」）。
 #                      文件存在就把里面的 DISCOURSE_* 写进容器配置并去掉 DISCOURSE_DISABLE_EMAILS；
 #                      不存在就照模板原样，内网配置下即不发信。SMTP 密码因此不进仓库
 # 例：
-#   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORCE_HTTPS=false infra/deploy-discourse.sh
-#   sudo GTMC_APP_TEMPLATE=app.internal.yml GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
+#   sudo GTMC_FORUM_HOST=tempforum.example.com infra/deploy-discourse.sh
 #
 # 可重复执行：app.yml 内容没变就不重建容器（重建有停机）。
 
@@ -27,7 +25,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DISCOURSE_DIR="${DISCOURSE_DIR:-/var/discourse}"
 CONTAINER="${CONTAINER:-app}"
-APP_TEMPLATE="$REPO/infra/discourse/${GTMC_APP_TEMPLATE:-app.yml}"
+APP_TEMPLATE="$REPO/infra/discourse/app.yml"
 FORCE_HTTPS="${GTMC_FORCE_HTTPS:-true}"
 FORUM_HOST="${GTMC_FORUM_HOST:-}"
 SMTP_ENV_FILE="${GTMC_SMTP_ENV_FILE:-/etc/gtmc/smtp.env}"
@@ -122,7 +120,7 @@ install_app_config() {
   merge_smtp_env "$rendered" "$workdir/smtp-env.yml"
   hostname="$(pick_web_hostname "$rendered")"
   if grep -q 'CHANGEME' "$rendered"; then
-    echo "$APP_TEMPLATE 里还有 CHANGEME 占位符，填好再部署（内网阶段用 GTMC_APP_TEMPLATE=app.internal.yml）。" >&2
+    echo "$APP_TEMPLATE 里还有 CHANGEME 占位符，填好再部署。" >&2
     exit 1
   fi
   if [ -z "$hostname" ]; then
