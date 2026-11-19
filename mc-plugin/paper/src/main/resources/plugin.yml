@@ -1,8 +1,0 @@
-name: GtmcPaper
-version: '${version}'
-main: org.gtmc.paper.GtmcPlugin
-description: GTMC 社团服务器插件：向论坛上报服务器状态。
-# 1.21 而不是 1.21.11：让所有 1.21.x 的服都能加载。
-api-version: '1.21'
-# 等世界加载完再开始上报，避免服务器还没准备好就在论坛上显示在线。
-load: POSTWORLD
