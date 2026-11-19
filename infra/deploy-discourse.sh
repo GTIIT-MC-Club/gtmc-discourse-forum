@@ -254,7 +254,7 @@ if [ "$run_scripts" -eq 1 ]; then
   cat <<'DONE'
 
 == 完成
-新站初始化之后还要手工做的事见 infra/content/admin-setup.md（上传 Logo、发欢迎帖）。
+新站初始化之后还要手工做的事见 infra/content/admin-setup.md（上传 Logo 和图标、发欢迎帖）。
 改了后台设置，记得用 infra/export-forum-config.sh 备份到仓库（见 CONFIGURATION.md）。
 DONE
 fi

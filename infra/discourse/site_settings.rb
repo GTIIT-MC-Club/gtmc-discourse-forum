@@ -56,7 +56,7 @@ SETTINGS = {
 
   # 字体用系统字体栈（core 的 System 项，key 为 system）。
   # 核心默认是 Inter，它不含中文字形，中文只能回落到系统字体，字重和行距与英文部分对不上。
-  # Logo 图片不由脚本管：管理员在后台上传 design/brand/gtmc-logo-3x.png（见 infra/content/admin-setup.md）。
+  # Logo 和图标不由脚本管：管理员在后台上传 design/brand/ 里的文件（见 infra/content/admin-setup.md）。
   base_font: "system",
   heading_font: "system",
 
