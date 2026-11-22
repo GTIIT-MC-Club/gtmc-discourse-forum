@@ -10,8 +10,8 @@
 # 环境变量：
 #   GTMC_FORCE_HTTPS   初始化新站时传给 site_settings.rb，默认 true；没有 TLS 的阶段必须传 false，
 #                      否则全站 301 到 https:// 而那个端口上没有 TLS。站点初始化之后改到后台去改
-#   GTMC_FORUM_HOST    覆盖配置里的 DISCOURSE_HOSTNAME。域名属于部署而不属于代码，
-#                      临时的测试域名尤其不该提交进仓库，所以在这里传入
+#   GTMC_FORUM_HOST    临时覆盖配置里的 DISCOURSE_HOSTNAME（正式域名 forum.gtmc.top 已写在 app.yml）。
+#                      临时的测试域名不该提交进仓库，所以在这里传入
 #   GTMC_SMTP_ENV_FILE 发信配置，默认 /etc/gtmc/smtp.env（格式见 infra/README.md「发信」）。
 #                      文件存在就把里面的 DISCOURSE_* 写进容器配置并去掉 DISCOURSE_DISABLE_EMAILS；
 #                      不存在就照模板原样，内网配置下即不发信。SMTP 密码因此不进仓库

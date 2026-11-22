@@ -39,7 +39,7 @@ sudo infra/deploy-discourse.sh --rebuild    # 强制重建容器
 脚本可重复运行，`app.yml` 没变就不重建（重建会停机几分钟）。新站第一次跑会执行初始化脚本，
 把论坛设成社团的出厂设置；之后设置归后台管，脚本不再覆盖。备份用后台自带的备份功能。
 
-可用的环境变量：`GTMC_FORUM_HOST`（覆盖域名）、`GTMC_FORCE_HTTPS`（默认 true）、`GTMC_SMTP_ENV_FILE`（默认 `/etc/gtmc/smtp.env`）。
+可用的环境变量：`GTMC_FORUM_HOST`（临时覆盖 `app.yml` 里的域名 `forum.gtmc.top`）、`GTMC_FORCE_HTTPS`（默认 true）、`GTMC_SMTP_ENV_FILE`（默认 `/etc/gtmc/smtp.env`）。
 
 ### 发信
 

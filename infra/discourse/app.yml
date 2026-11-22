@@ -27,9 +27,9 @@ env:
   # 8G 内存配 3 个 worker。扩容到这个 VM 之前不要再加。
   UNICORN_WORKERS: 3
 
-  # 没有域名时用内网地址当主机名，这样同学用 http://192.168.2.111:8880 就能打开，
-  # 不必每人改 hosts。以后换成正式域名只需改这一行再 rebuild。
-  DISCOURSE_HOSTNAME: 192.168.2.111
+  # 对外的域名。页面里的绝对链接、徽标、OIDC 回调地址都用它，写错了外面打不开、登录不了。
+  # 临时换测试域名时用 GTMC_FORUM_HOST 传，别改这里。
+  DISCOURSE_HOSTNAME: forum.gtmc.top
   # 不设 DISCOURSE_DEVELOPER_EMAILS：邮件关着，用那个邮箱注册也收不到激活信，成不了管理员。
   # 首个管理员在容器里用 rake admin:create 建，见 infra/README.md。
 
