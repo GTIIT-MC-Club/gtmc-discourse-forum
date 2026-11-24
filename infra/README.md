@@ -36,7 +36,9 @@ sudo infra/deploy-discourse.sh              # 更新
 sudo infra/deploy-discourse.sh --rebuild    # 强制重建容器
 ```
 
-脚本可重复运行，`app.yml` 没变就不重建（重建会停机几分钟）。新站第一次跑会执行初始化脚本，
+脚本可重复运行，`app.yml` 没变就不重建。重建先在旧容器照常服务时构建新镜像，成功后才换容器，停机只有一两分钟；
+这台机器连 GitHub 偶尔超时，构建失败会自动重来，最多 3 次，都失败的话旧容器不动。
+**别直接跑 `./launcher rebuild app`**：它先停掉旧容器再构建，中途连不上 GitHub 论坛就一直停着。新站第一次跑会执行初始化脚本，
 把论坛设成社团的出厂设置；之后设置归后台管，脚本不再覆盖。备份用后台自带的备份功能。
 
 可用的环境变量：`GTMC_FORUM_HOST`（临时覆盖 `app.yml` 里的域名 `forum.gtmc.top`）、`GTMC_FORCE_HTTPS`（默认 true）、`GTMC_SMTP_ENV_FILE`（默认 `/etc/gtmc/smtp.env`）。

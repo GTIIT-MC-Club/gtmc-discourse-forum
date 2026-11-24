@@ -46,14 +46,15 @@ volumes:
       guest: /var/log
 
 # 不装这两个插件，论坛就没有 GTMC 的功能（右栏、服务器状态等）和后台升级页。
+# 这里连 GitHub 偶尔会卡两分钟后失败（实测五次里一次），一次失败整个重建就作废，所以每个克隆最多试 5 次。
+# 克隆卡在半路不动 30 秒也算失败（lowSpeed），不干等。
 hooks:
   after_code:
     - exec:
         cd: $home/plugins
         cmd:
-          - git clone https://github.com/discourse/docker_manager.git
-          - rm -rf ./discourse-gtmc
-          - git clone https://github.com/GTIIT-MC-Club/gtmc-forum-plugin.git discourse-gtmc
+          - for attempt in 1 2 3 4 5; do rm -rf ./docker_manager; git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 clone https://github.com/discourse/docker_manager.git && exit 0; echo "clone docker_manager failed, retrying"; sleep 10; done; exit 1
+          - for attempt in 1 2 3 4 5; do rm -rf ./discourse-gtmc; git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 clone https://github.com/GTIIT-MC-Club/gtmc-forum-plugin.git discourse-gtmc && exit 0; echo "clone discourse-gtmc failed, retrying"; sleep 10; done; exit 1
 
 run:
   # 经 Cloudflare Tunnel 进来的请求，在容器看来都来自 cloudflared 所在的这台虚拟机

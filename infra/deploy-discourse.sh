@@ -149,8 +149,21 @@ rebuild_container() {
     echo "== 容器 $CONTAINER 在跑，跳过重建"
     return
   fi
-  echo "== 重建容器（几分钟，期间论坛不可用）"
-  ( cd "$DISCOURSE_DIR" && ./launcher rebuild "$CONTAINER" )
+  # 不直接 launcher rebuild：它先停掉旧容器再构建，构建中途连不上 GitHub 失败的话论坛就一直停着。
+  # 这里先 bootstrap 出新镜像（旧容器照常服务），失败了整个重来，最多 3 次；成功后才换容器，停机只有启动的一两分钟。
+  local attempt
+  for attempt in 1 2 3; do
+    echo "== 构建新镜像（第 $attempt 次，期间论坛照常可用）"
+    if ( cd "$DISCOURSE_DIR" && ./launcher bootstrap "$CONTAINER" ); then
+      echo "== 换上新容器（一两分钟，期间论坛不可用）"
+      ( cd "$DISCOURSE_DIR" && ./launcher destroy "$CONTAINER" && ./launcher start "$CONTAINER" )
+      return
+    fi
+    echo "!! 构建失败，多半是连 GitHub 超时，30 秒后重试" >&2
+    sleep 30
+  done
+  echo "!! 构建连续失败 3 次，旧容器没动，论坛仍是旧版本" >&2
+  return 1
 }
 
 # docker cp 一个目录到已存在的位置会把它套一层，所以先清掉上一次的副本。
